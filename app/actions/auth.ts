@@ -10,12 +10,12 @@ function normalizeUsername(username: string) {
   return username.trim().toLowerCase().replace(/[^a-z0-9_]/g, "");
 }
 
-export async function signUpAction(formData: FormData) {
+export async function signUpAction(formData: FormData): Promise<void> {
   const username = normalizeUsername(String(formData.get("username") || ""));
   const password = String(formData.get("password") || "");
 
   if (username.length < 3 || password.length < 8) {
-    return { error: "Use a username with at least 3 characters and a password with at least 8." };
+    throw new Error("Use a username with at least 3 characters and a password with at least 8.");
   }
 
   const admin = createAdminClient();
@@ -27,7 +27,7 @@ export async function signUpAction(formData: FormData) {
     .maybeSingle();
 
   if (existing) {
-    return { error: "That username is already taken." };
+    throw new Error("That username is already taken.");
   }
 
   const email = `${username}@jayhawkgems.local`;
@@ -41,20 +41,24 @@ export async function signUpAction(formData: FormData) {
   });
 
   if (error || !data.user) {
-    return { error: error?.message ?? "Unable to create the account." };
+    throw new Error(error?.message ?? "Unable to create the account.");
   }
 
   const supabase = await createServerSupabaseClient();
-  await supabase.auth.signInWithPassword({
+  const { error: signInError } = await supabase.auth.signInWithPassword({
     email,
     password
   });
+
+  if (signInError) {
+    throw new Error(signInError.message);
+  }
 
   revalidatePath("/");
   redirect("/markets");
 }
 
-export async function loginAction(formData: FormData) {
+export async function loginAction(formData: FormData): Promise<void> {
   const username = normalizeUsername(String(formData.get("username") || ""));
   const password = String(formData.get("password") || "");
   const admin = createAdminClient();
@@ -66,7 +70,7 @@ export async function loginAction(formData: FormData) {
     .maybeSingle();
 
   if (!profile?.auth_email) {
-    return { error: "No account was found for that username." };
+    throw new Error("No account was found for that username.");
   }
 
   const supabase = await createServerSupabaseClient();
@@ -76,14 +80,14 @@ export async function loginAction(formData: FormData) {
   });
 
   if (error) {
-    return { error: "Incorrect username or password." };
+    throw new Error("Incorrect username or password.");
   }
 
   revalidatePath("/");
   redirect("/markets");
 }
 
-export async function logoutAction() {
+export async function logoutAction(): Promise<void> {
   const supabase = await createServerSupabaseClient();
   await supabase.auth.signOut();
   redirect("/");

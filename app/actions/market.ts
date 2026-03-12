@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
-export async function submitMarketProposalAction(formData: FormData) {
+export async function submitMarketProposalAction(formData: FormData): Promise<void> {
   const { user } = await requireUser();
   const supabase = await createServerSupabaseClient();
 
@@ -25,16 +25,15 @@ export async function submitMarketProposalAction(formData: FormData) {
 
   const { error } = await supabase.rpc("submit_market_proposal", payload);
   if (error) {
-    return { error: error.message };
+    throw new Error(error.message);
   }
 
   revalidatePath("/create");
   revalidatePath("/admin");
   revalidatePath("/markets");
-  return { success: "Proposal submitted for admin review." };
 }
 
-export async function placeTradeAction(formData: FormData) {
+export async function placeTradeAction(formData: FormData): Promise<void> {
   await requireUser();
   const supabase = await createServerSupabaseClient();
 
@@ -45,17 +44,16 @@ export async function placeTradeAction(formData: FormData) {
   });
 
   if (error) {
-    return { error: error.message };
+    throw new Error(error.message);
   }
 
   const marketId = String(formData.get("market_id"));
   revalidatePath(`/markets/${marketId}`);
   revalidatePath("/portfolio");
   revalidatePath("/markets");
-  return { success: "Trade placed successfully." };
 }
 
-export async function submitVoteAction(formData: FormData) {
+export async function submitVoteAction(formData: FormData): Promise<void> {
   await requireUser();
   const supabase = await createServerSupabaseClient();
 
@@ -66,14 +64,13 @@ export async function submitVoteAction(formData: FormData) {
   });
 
   if (error) {
-    return { error: error.message };
+    throw new Error(error.message);
   }
 
   revalidatePath(`/markets/${String(formData.get("market_id"))}`);
-  return { success: "Vote recorded." };
 }
 
-export async function submitDepositRequestAction(formData: FormData) {
+export async function submitDepositRequestAction(formData: FormData): Promise<void> {
   await requireUser();
   const supabase = await createServerSupabaseClient();
 
@@ -83,10 +80,9 @@ export async function submitDepositRequestAction(formData: FormData) {
   });
 
   if (error) {
-    return { error: error.message };
+    throw new Error(error.message);
   }
 
   revalidatePath("/portfolio");
   revalidatePath("/admin");
-  return { success: "Deposit request sent to admins." };
 }
