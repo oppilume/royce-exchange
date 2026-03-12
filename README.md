@@ -139,3 +139,4 @@ npm run dev
 ## Verification status
 
 The environment I built this in does not have `node`, `npm`, or `npx` installed, so I could not run the Next app, typecheck, or lint here. The codebase and setup files are complete, but local verification still needs to be done after installing Node.
+# royce-exchange
