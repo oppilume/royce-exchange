@@ -1,0 +1,40 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-ink text-cream antialiased;
+  background-image:
+    radial-gradient(circle at 20% 0%, rgba(255, 207, 87, 0.08), transparent 22%),
+    radial-gradient(circle at 80% 0%, rgba(142, 197, 255, 0.08), transparent 20%),
+    linear-gradient(180deg, #101b31 0%, #09111f 55%, #08101c 100%);
+  min-height: 100vh;
+}
+
+a {
+  @apply transition-colors;
+}
+
+::selection {
+  background: rgba(255, 207, 87, 0.3);
+}
+
+.app-shell {
+  @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
+}
+
+.glass-panel {
+  @apply rounded-3xl border border-white/10 bg-white/5 shadow-glow backdrop-blur-xl;
+}
+
+.data-grid {
+  @apply grid gap-4 sm:grid-cols-2 xl:grid-cols-4;
+}
