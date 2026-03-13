@@ -1,8 +1,11 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
+
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { requireUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { SCHEMA_NOT_READY_MESSAGE, isSchemaCacheMissingError } from "@/lib/supabase/errors";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
@@ -110,4 +113,75 @@ export async function logoutAction(): Promise<void> {
   const supabase = await createServerSupabaseClient();
   await supabase.auth.signOut();
   redirect("/");
+}
+
+export async function closeAccountAction(formData: FormData): Promise<void> {
+  const confirmation = String(formData.get("confirmation") || "").trim();
+  const { user, profile } = await requireUser();
+
+  if (confirmation !== "CLOSE MY ACCOUNT") {
+    redirect(
+      `/portfolio?error=${encodeURIComponent(
+        'Type "CLOSE MY ACCOUNT" exactly to close your account.'
+      )}`
+    );
+  }
+
+  const admin = createAdminClient();
+
+  if (profile?.role === "admin") {
+    const { count: adminCount, error: adminCountError } = await admin
+      .from("profiles")
+      .select("id", { count: "exact", head: true })
+      .eq("role", "admin");
+
+    if (!adminCountError && (adminCount ?? 0) <= 1) {
+      redirect(
+        `/portfolio?error=${encodeURIComponent(
+          "You are the last admin. Promote another account before closing this one."
+        )}`
+      );
+    }
+  }
+
+  const anonymizedEmail = `closed-${user.id}-${randomUUID()}@example.invalid`;
+  const { error: authUpdateError } = await admin.auth.admin.updateUserById(user.id, {
+    email: anonymizedEmail,
+    password: randomUUID(),
+    ban_duration: "876000h",
+    user_metadata: {
+      closed_account: true,
+      closed_at: new Date().toISOString()
+    }
+  });
+
+  if (authUpdateError) {
+    redirect(`/portfolio?error=${encodeURIComponent(authUpdateError.message)}`);
+  }
+
+  const { error: profileUpdateError } = await admin
+    .from("profiles")
+    .update({
+      username: null,
+      role: "user",
+      bio: "Closed account",
+      avatar_color: "#6b7280"
+    })
+    .eq("id", user.id);
+
+  if (profileUpdateError && !isSchemaCacheMissingError(profileUpdateError)) {
+    redirect(`/portfolio?error=${encodeURIComponent(profileUpdateError.message)}`);
+  }
+
+  const supabase = await createServerSupabaseClient();
+  await supabase.auth.signOut();
+
+  revalidatePath("/");
+  revalidatePath("/leaderboard");
+  revalidatePath("/portfolio");
+  redirect(
+    `/login?status=${encodeURIComponent(
+      "Your account has been closed. Public identity was removed and future sign-in was disabled."
+    )}`
+  );
 }

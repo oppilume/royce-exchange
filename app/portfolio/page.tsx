@@ -1,3 +1,4 @@
+import { closeAccountAction } from "@/app/actions/auth";
 import { submitDepositRequestAction } from "@/app/actions/market";
 import { StatusBanner } from "@/components/status-banner";
 import { Button } from "@/components/ui/button";
@@ -112,6 +113,37 @@ export default async function PortfolioPage({
             <div className="px-6 py-10 text-sm text-cream/65">No deposit requests yet.</div>
           )}
         </div>
+      </section>
+
+      <section className="glass-panel grid gap-6 p-6 lg:grid-cols-[1.1fr_0.9fr]">
+        <div>
+          <p className="text-xs uppercase tracking-[0.18em] text-gold/70">Account safety</p>
+          <h2 className="mt-1 text-2xl font-semibold">Close account</h2>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-cream/65">
+            This closes your login access and removes your public username/profile identity.
+            Historical trades, market participation, and accounting records stay in place so
+            market history remains consistent.
+          </p>
+          <p className="mt-3 text-sm text-cream/50">
+            This action is intended to be permanent for this MVP.
+          </p>
+        </div>
+
+        <form action={closeAccountAction} className="rounded-3xl border border-danger/25 bg-danger/10 p-5">
+          <p className="text-sm font-semibold text-danger">Confirm closure</p>
+          <p className="mt-2 text-sm text-cream/65">
+            Type <span className="font-semibold text-cream">CLOSE MY ACCOUNT</span> to continue.
+          </p>
+          <Input
+            className="mt-4"
+            name="confirmation"
+            placeholder="CLOSE MY ACCOUNT"
+            required
+          />
+          <Button className="mt-4" type="submit" variant="danger">
+            Close account
+          </Button>
+        </form>
       </section>
     </div>
   );
