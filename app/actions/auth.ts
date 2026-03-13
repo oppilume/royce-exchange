@@ -44,6 +44,16 @@ export async function signUpAction(formData: FormData): Promise<void> {
     throw new Error(error?.message ?? "Unable to create the account.");
   }
 
+  const { error: profileInsertError } = await admin.from("profiles").insert({
+    id: data.user.id,
+    username,
+    auth_email: email
+  });
+
+  if (profileInsertError) {
+    throw new Error(profileInsertError.message);
+  }
+
   const supabase = await createServerSupabaseClient();
   const { error: signInError } = await supabase.auth.signInWithPassword({
     email,
