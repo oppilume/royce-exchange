@@ -7,10 +7,23 @@ import { requireUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { SCHEMA_NOT_READY_MESSAGE, isSchemaCacheMissingError } from "@/lib/supabase/errors";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { pacificLocalInputToUtcIso } from "@/lib/utils";
 
 export async function submitMarketProposalAction(formData: FormData): Promise<void> {
   const { user } = await requireUser();
   const supabase = await createServerSupabaseClient();
+  const tradingCloseRaw = String(formData.get("trading_close_at") || "");
+  const voteStartRaw = String(formData.get("vote_start_at") || "");
+  const tradingCloseAt = pacificLocalInputToUtcIso(tradingCloseRaw);
+  const voteStartAt = pacificLocalInputToUtcIso(voteStartRaw);
+
+  if (!tradingCloseAt || !voteStartAt) {
+    redirect(
+      `/create?error=${encodeURIComponent(
+        "Enter valid Pacific times for trading close and vote start."
+      )}`
+    );
+  }
 
   const payload = {
     p_teacher_name: String(formData.get("teacher_name") || ""),
@@ -20,20 +33,21 @@ export async function submitMarketProposalAction(formData: FormData): Promise<vo
     p_market_date: String(formData.get("market_date") || ""),
     p_market_type: String(formData.get("market_type") || ""),
     p_notes: String(formData.get("notes") || ""),
-    p_trading_close_at: String(formData.get("trading_close_at") || ""),
-    p_vote_start_at: String(formData.get("vote_start_at") || ""),
+    p_trading_close_at: tradingCloseAt,
+    p_vote_start_at: voteStartAt,
     p_category_name: String(formData.get("category_name") || ""),
     p_creator_id: user.id
   };
 
   const { error } = await supabase.rpc("submit_market_proposal", payload);
   if (error) {
-    throw new Error(error.message);
+    redirect(`/create?error=${encodeURIComponent(error.message)}`);
   }
 
   revalidatePath("/create");
   revalidatePath("/admin");
   revalidatePath("/markets");
+  redirect(`/create?status=${encodeURIComponent("Proposal submitted for admin review.")}`);
 }
 
 export async function placeTradeAction(formData: FormData): Promise<void> {

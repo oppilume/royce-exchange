@@ -75,6 +75,7 @@ export function MarketProposalForm() {
           <ul className="space-y-2">
             <li>Trading must close before class starts.</li>
             <li>Voting should open after class ends.</li>
+            <li>All date and time inputs are interpreted in Pacific Time.</li>
             <li>Use specific wording so honor-system voting is easier.</li>
             <li>Only approved markets go live publicly.</li>
           </ul>

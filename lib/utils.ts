@@ -18,6 +18,15 @@ const pacificDateTimeFormatter = new Intl.DateTimeFormat("en-US", {
   hour12: true,
   timeZoneName: "short"
 });
+const pacificPartsFormatter = new Intl.DateTimeFormat("en-US", {
+  timeZone: PACIFIC_TIMEZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23"
+});
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -43,6 +52,50 @@ export function formatDatePst(value: string | Date) {
 
 export function formatDateTimePst(value: string | Date) {
   return pacificDateTimeFormatter.format(new Date(value));
+}
+
+export function pacificLocalInputToUtcIso(value: string) {
+  const match =
+    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(value.trim());
+
+  if (!match) return null;
+
+  const [, year, month, day, hour, minute] = match;
+  const targetUtcEquivalent = Date.UTC(
+    Number(year),
+    Number(month) - 1,
+    Number(day),
+    Number(hour),
+    Number(minute)
+  );
+
+  let guess = targetUtcEquivalent;
+
+  for (let index = 0; index < 4; index += 1) {
+    const zonedParts = pacificPartsFormatter.formatToParts(new Date(guess));
+    const represented = {
+      year: Number(zonedParts.find((part) => part.type === "year")?.value ?? year),
+      month: Number(zonedParts.find((part) => part.type === "month")?.value ?? month),
+      day: Number(zonedParts.find((part) => part.type === "day")?.value ?? day),
+      hour: Number(zonedParts.find((part) => part.type === "hour")?.value ?? hour),
+      minute: Number(zonedParts.find((part) => part.type === "minute")?.value ?? minute)
+    };
+
+    const representedUtcEquivalent = Date.UTC(
+      represented.year,
+      represented.month - 1,
+      represented.day,
+      represented.hour,
+      represented.minute
+    );
+
+    const diff = targetUtcEquivalent - representedUtcEquivalent;
+    guess += diff;
+
+    if (diff === 0) break;
+  }
+
+  return new Date(guess).toISOString();
 }
 
 export function formatMarketPhase(market: {

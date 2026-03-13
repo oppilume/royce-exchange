@@ -1,7 +1,13 @@
 import { MarketProposalForm } from "@/components/market-proposal-form";
+import { StatusBanner } from "@/components/status-banner";
 import { requireUser } from "@/lib/auth";
 
-export default async function CreateMarketPage() {
+export default async function CreateMarketPage({
+  searchParams
+}: {
+  searchParams: Promise<Record<string, string | undefined>>;
+}) {
+  const params = await searchParams;
   await requireUser();
 
   return (
@@ -12,7 +18,11 @@ export default async function CreateMarketPage() {
         <p className="mt-3 max-w-2xl text-cream/68">
           Every proposal enters a review queue before it becomes publicly tradable.
         </p>
+        <p className="mt-2 text-sm text-cream/55">
+          Time fields on this page are treated as Pacific Time.
+        </p>
       </div>
+      <StatusBanner error={params.error} status={params.status} />
       <MarketProposalForm />
     </div>
   );
