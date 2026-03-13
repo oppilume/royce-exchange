@@ -13,9 +13,13 @@ export async function createServerSupabaseClient() {
           return cookieStore.getAll();
         },
         setAll(cookiesToSet: Array<{ name: string; value: string; options: any }>) {
-  cookiesToSet.forEach(({ name, value, options }) =>
-    cookieStore.set(name, value, options)
-          );
+          try {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
+          } catch {
+            // Server Components can read cookies but may not be allowed to write them.
+          }
         }
       }
     }
