@@ -6,6 +6,7 @@ create type public.market_status as enum ('pending', 'approved', 'rejected', 're
 create type public.market_side as enum ('yes', 'no');
 create type public.transaction_type as enum ('trade', 'payout', 'refund', 'adjustment', 'deposit');
 create type public.deposit_status as enum ('pending', 'approved', 'rejected');
+create type public.balance_transaction_type as enum ('deposit_approved', 'admin_adjustment', 'trade_lock', 'trade_payout', 'trade_refund');
 
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
@@ -125,6 +126,31 @@ create table if not exists public.deposit_requests (
   status public.deposit_status not null default 'pending',
   reviewed_by uuid references public.profiles(id) on delete set null,
   reviewed_at timestamptz,
+  admin_note text,
+  created_at timestamptz not null default timezone('utc', now())
+);
+
+alter table if exists public.deposit_requests add column if not exists admin_note text;
+alter table if exists public.deposit_requests add column if not exists updated_at timestamptz not null default timezone('utc', now());
+
+create table if not exists public.balance_transactions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  amount_gems bigint not null,
+  type public.balance_transaction_type not null,
+  note text,
+  related_request_id uuid references public.deposit_requests(id) on delete set null,
+  created_by uuid references public.profiles(id) on delete set null,
+  created_at timestamptz not null default timezone('utc', now())
+);
+
+create table if not exists public.admin_audit_log (
+  id uuid primary key default gen_random_uuid(),
+  admin_user_id uuid not null references public.profiles(id) on delete cascade,
+  action_type text not null,
+  target_type text not null,
+  target_id uuid,
+  metadata jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default timezone('utc', now())
 );
 
@@ -143,6 +169,11 @@ $$;
 drop trigger if exists touch_profiles_updated_at on public.profiles;
 create trigger touch_profiles_updated_at
 before update on public.profiles
+for each row execute procedure public.touch_updated_at();
+
+drop trigger if exists touch_deposit_requests_updated_at on public.deposit_requests;
+create trigger touch_deposit_requests_updated_at
+before update on public.deposit_requests
 for each row execute procedure public.touch_updated_at();
 
 drop trigger if exists touch_markets_updated_at on public.markets;
@@ -314,6 +345,8 @@ alter table public.market_resolutions enable row level security;
 alter table public.transactions enable row level security;
 alter table public.balance_adjustments enable row level security;
 alter table public.deposit_requests enable row level security;
+alter table public.balance_transactions enable row level security;
+alter table public.admin_audit_log enable row level security;
 alter table public.categories enable row level security;
 alter table public.market_categories enable row level security;
 
@@ -340,6 +373,12 @@ for select using (user_id = auth.uid() or public.is_admin(auth.uid()));
 
 create policy "admins read balance adjustments" on public.balance_adjustments
 for select using (user_id = auth.uid() or admin_id = auth.uid() or public.is_admin(auth.uid()));
+
+create policy "users can read own balance transactions" on public.balance_transactions
+for select using (user_id = auth.uid() or public.is_admin(auth.uid()));
+
+create policy "admins read audit log" on public.admin_audit_log
+for select using (public.is_admin(auth.uid()));
 
 create policy "categories are public read" on public.categories for select using (true);
 create policy "market categories are public read" on public.market_categories for select using (true);
@@ -762,7 +801,7 @@ end;
 $$;
 
 grant usage on schema public to anon, authenticated, service_role;
-grant select on public.market_cards, public.market_positions, public.portfolio_positions, public.public_profile_stats, public.leaderboard_all_time, public.leaderboard_weekly, public.platform_stats, public.deposit_request_cards to anon, authenticated;
+grant select on public.market_cards, public.market_positions, public.portfolio_positions, public.public_profile_stats, public.leaderboard_all_time, public.leaderboard_weekly, public.platform_stats, public.deposit_request_cards, public.balance_transactions, public.admin_audit_log to anon, authenticated;
 grant execute on function public.submit_market_proposal(text, text, text, text, date, public.market_type, text, timestamptz, timestamptz, text, uuid) to authenticated;
 grant execute on function public.place_trade(uuid, public.market_side, integer) to authenticated;
 grant execute on function public.submit_market_vote(uuid, public.market_side, text) to authenticated;

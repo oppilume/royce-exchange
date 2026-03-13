@@ -1,8 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 import { requireUser } from "@/lib/auth";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { SCHEMA_NOT_READY_MESSAGE, isSchemaCacheMissingError } from "@/lib/supabase/errors";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 export async function submitMarketProposalAction(formData: FormData): Promise<void> {
@@ -71,18 +74,28 @@ export async function submitVoteAction(formData: FormData): Promise<void> {
 }
 
 export async function submitDepositRequestAction(formData: FormData): Promise<void> {
-  await requireUser();
-  const supabase = await createServerSupabaseClient();
+  const { user } = await requireUser();
+  const amountGems = Number(formData.get("amount_gems") || 0);
+  const note = String(formData.get("note") || "").trim();
 
-  const { error } = await supabase.rpc("submit_deposit_request", {
-    p_amount_gems: Number(formData.get("amount_gems") || 0),
-    p_note: String(formData.get("note") || "")
+  if (!Number.isFinite(amountGems) || amountGems <= 0) {
+    redirect(`/portfolio?error=${encodeURIComponent("Enter a positive Gem amount for the deposit request.")}`);
+  }
+
+  const admin = createAdminClient();
+  const { error } = await admin.from("deposit_requests").insert({
+    user_id: user.id,
+    amount_gems: amountGems,
+    note: note || null,
+    status: "pending"
   });
 
   if (error) {
-    throw new Error(error.message);
+    const message = isSchemaCacheMissingError(error) ? SCHEMA_NOT_READY_MESSAGE : error.message;
+    redirect(`/portfolio?error=${encodeURIComponent(message)}`);
   }
 
   revalidatePath("/portfolio");
   revalidatePath("/admin");
+  redirect(`/portfolio?status=${encodeURIComponent("Deposit request submitted for admin review.")}`);
 }

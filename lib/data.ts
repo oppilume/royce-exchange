@@ -145,7 +145,8 @@ export const getPortfolioData = cache(async (userId: string) => {
   const [
     { data: positions, error: positionsError },
     { data: transactions, error: transactionsError },
-    { data: stats, error: statsError }
+    { data: stats, error: statsError },
+    { data: depositRequests, error: depositError }
   ] = await Promise.all([
     supabase
       .from("portfolio_positions")
@@ -158,35 +159,52 @@ export const getPortfolioData = cache(async (userId: string) => {
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .limit(30),
-    supabase.from("public_profile_stats").select("*").eq("id", userId).maybeSingle()
+    supabase.from("public_profile_stats").select("*").eq("id", userId).maybeSingle(),
+    supabase
+      .from("deposit_requests")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(10)
   ]);
 
   if (
     isSchemaCacheMissingError(positionsError) ||
     isSchemaCacheMissingError(transactionsError) ||
-    isSchemaCacheMissingError(statsError)
+    isSchemaCacheMissingError(statsError) ||
+    isSchemaCacheMissingError(depositError)
   ) {
     return {
       positions: [],
       transactions: [],
-      stats: null
+      stats: null,
+      depositRequests: []
     };
   }
 
   return {
     positions: positions ?? [],
     transactions: transactions ?? [],
-    stats
+    stats,
+    depositRequests: depositRequests ?? []
   };
 });
 
 export const getAdminDashboardData = cache(async () => {
   const supabase = createAdminClient();
+  const authUsersResponse = await supabase.auth.admin.listUsers({
+    page: 1,
+    perPage: 200
+  });
+
   const [
     { data: pending, error: pendingError },
     { data: deposits, error: depositsError },
     { data: stats, error: statsError },
-    { data: users, error: usersError }
+    { data: users, error: usersError },
+    { data: marketList, error: marketListError },
+    { data: auditLog, error: auditError },
+    { data: balanceTransactions, error: balanceTxError }
   ] = await Promise.all([
     supabase
       .from("market_cards")
@@ -203,27 +221,62 @@ export const getAdminDashboardData = cache(async () => {
       .from("profiles")
       .select("id, username, gem_balance, role")
       .order("gem_balance", { ascending: false })
-      .limit(20)
+      .limit(50),
+    supabase
+      .from("market_cards")
+      .select("*")
+      .neq("status", "deleted")
+      .order("created_at", { ascending: false })
+      .limit(40),
+    supabase
+      .from("admin_audit_log")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(40),
+    supabase
+      .from("balance_transactions")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(40)
   ]);
 
   if (
     isSchemaCacheMissingError(pendingError) ||
     isSchemaCacheMissingError(depositsError) ||
     isSchemaCacheMissingError(statsError) ||
-    isSchemaCacheMissingError(usersError)
+    isSchemaCacheMissingError(usersError) ||
+    isSchemaCacheMissingError(marketListError) ||
+    isSchemaCacheMissingError(auditError) ||
+    isSchemaCacheMissingError(balanceTxError)
   ) {
     return {
       pending: [],
       deposits: [],
       stats: null,
-      users: []
+      users: [],
+      marketList: [],
+      auditLog: [],
+      balanceTransactions: []
     };
   }
+
+  const authUsers = authUsersResponse.data?.users ?? [];
+  const usersWithEmail = (users ?? []).map((profile) => {
+    const authUser = authUsers.find((entry) => entry.id === profile.id);
+    return {
+      ...profile,
+      email: authUser?.email ?? null,
+      last_sign_in_at: authUser?.last_sign_in_at ?? null
+    };
+  });
 
   return {
     pending: pending ?? [],
     deposits: deposits ?? [],
     stats,
-    users: users ?? []
+    users: usersWithEmail,
+    marketList: marketList ?? [],
+    auditLog: auditLog ?? [],
+    balanceTransactions: balanceTransactions ?? []
   };
 });

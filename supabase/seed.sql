@@ -156,7 +156,17 @@ insert into public.balance_adjustments (id, admin_id, user_id, amount_gems, reas
   ('90000000-0000-0000-0000-000000000003', '20000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000004', 10000, 'Initial manual credit', now() - interval '8 days')
 on conflict do nothing;
 
-insert into public.deposit_requests (id, user_id, amount_gems, note, status, reviewed_by, reviewed_at, created_at) values
-  ('a0000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000005', 2500, 'Sent after school club meeting.', 'pending', null, null, now() - interval '3 hours'),
-  ('a0000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000006', 4000, 'External deposit already confirmed.', 'approved', '20000000-0000-0000-0000-000000000001', now() - interval '1 day', now() - interval '2 days')
+insert into public.deposit_requests (id, user_id, amount_gems, note, status, reviewed_by, reviewed_at, admin_note, created_at, updated_at) values
+  ('a0000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000005', 2500, 'Sent after school club meeting.', 'pending', null, null, null, now() - interval '3 hours', now() - interval '3 hours'),
+  ('a0000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000006', 4000, 'External deposit already confirmed.', 'approved', '20000000-0000-0000-0000-000000000001', now() - interval '1 day', 'Approved after off-platform confirmation.', now() - interval '2 days', now() - interval '1 day')
+on conflict do nothing;
+
+insert into public.balance_transactions (id, user_id, amount_gems, type, note, related_request_id, created_by, created_at) values
+  ('b0000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000006', 4000, 'deposit_approved', 'Approved deposit request', 'a0000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000001', now() - interval '1 day'),
+  ('b0000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000002', 15000, 'admin_adjustment', 'Initial manual credit', null, '20000000-0000-0000-0000-000000000001', now() - interval '8 days')
+on conflict do nothing;
+
+insert into public.admin_audit_log (id, admin_user_id, action_type, target_type, target_id, metadata, created_at) values
+  ('c0000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001', 'deposit_request_approved', 'deposit_request', 'a0000000-0000-0000-0000-000000000002', '{"amount_gems":4000}'::jsonb, now() - interval '1 day'),
+  ('c0000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000001', 'balance_adjusted', 'profile', '20000000-0000-0000-0000-000000000002', '{"amount_gems":15000,"reason":"Initial manual credit"}'::jsonb, now() - interval '8 days')
 on conflict do nothing;

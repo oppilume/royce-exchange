@@ -1,11 +1,17 @@
 import { submitDepositRequestAction } from "@/app/actions/market";
+import { StatusBanner } from "@/components/status-banner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { requireUser } from "@/lib/auth";
 import { getPortfolioData } from "@/lib/data";
 import { formatGems, formatPct, formatUsdHint } from "@/lib/utils";
 
-export default async function PortfolioPage() {
+export default async function PortfolioPage({
+  searchParams
+}: {
+  searchParams: Promise<Record<string, string | undefined>>;
+}) {
+  const params = await searchParams;
   const { user, profile } = await requireUser();
   const portfolio = await getPortfolioData(user.id);
   const headingLabel = profile?.username ? `@${profile.username}` : user.email ?? "Your account";
@@ -33,6 +39,7 @@ export default async function PortfolioPage() {
           <p className="text-sm text-cream/65">
             v1 uses manual admin credits after external payment. No Stripe is integrated yet.
           </p>
+          <StatusBanner error={params.error} status={params.status} />
           <Input type="number" name="amount_gems" placeholder="2500" required />
           <Input name="note" placeholder="Venmo sent to club treasurer" />
           <Button type="submit">Send request</Button>
@@ -80,6 +87,30 @@ export default async function PortfolioPage() {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      <section className="glass-panel overflow-hidden">
+        <div className="border-b border-white/10 px-6 py-5">
+          <h2 className="text-2xl font-semibold">Deposit requests</h2>
+        </div>
+        <div className="divide-y divide-white/6">
+          {portfolio.depositRequests.length ? (
+            portfolio.depositRequests.map((request) => (
+              <div key={request.id} className="flex items-center justify-between px-6 py-4 text-sm">
+                <div>
+                  <p className="font-medium">{formatGems(request.amount_gems)}</p>
+                  <p className="text-cream/55">{request.note ?? "No note"}</p>
+                </div>
+                <div className="text-right">
+                  <p className="font-medium capitalize">{request.status}</p>
+                  <p className="text-cream/45">{new Date(request.created_at).toLocaleString()}</p>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="px-6 py-10 text-sm text-cream/65">No deposit requests yet.</div>
+          )}
         </div>
       </section>
     </div>

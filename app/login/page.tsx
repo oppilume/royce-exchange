@@ -1,10 +1,17 @@
 import Link from "next/link";
 
 import { loginAction } from "@/app/actions/auth";
+import { StatusBanner } from "@/components/status-banner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-export default function LoginPage() {
+export default async function LoginPage({
+  searchParams
+}: {
+  searchParams: Promise<Record<string, string | undefined>>;
+}) {
+  const params = await searchParams;
+
   return (
     <div className="mx-auto max-w-md">
       <form action={loginAction} className="glass-panel space-y-5 p-8">
@@ -15,6 +22,7 @@ export default function LoginPage() {
             Log in with your email and password.
           </p>
         </div>
+        <StatusBanner error={params.error} status={params.status} />
         <Input name="email" type="email" placeholder="Email" required />
         <Input name="password" type="password" placeholder="Password" required />
         <Button type="submit" fullWidth>

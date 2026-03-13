@@ -110,11 +110,13 @@ npm run dev
 - Admin password: `jayhawkadmin`
 - User password for seeded users: `password123`
 - Seeded emails: `alex@example.com`, `mila@example.com`, `jordan@example.com`, `zoe@example.com`, `samir@example.com`
+- Seeded public usernames: `admin`, `alex`, `mila`, `jordan`, `zoe`, `samir`
 
 ## Auth flow
 
-- Signup asks for `email` and `password`.
-- Signup uses the server-side admin API to create and auto-confirm the auth user, then inserts the matching `profiles` row using the auth user id.
+- Signup asks for `email`, `password`, and `username`.
+- Email is the login credential. Username is the public identity shown throughout the app.
+- Signup uses the server-side admin API to create and auto-confirm the auth user, then inserts the matching `profiles` row using the auth user id and username.
 - Login signs in directly with email + password through Supabase Auth.
 
 ## Core backend rules
@@ -133,8 +135,32 @@ npm run dev
 - This MVP intentionally avoids Stripe and real-money flows.
 - Pricing is prototype-simple: each trade nudges the YES price linearly, while NO is always `100 - YES`.
 - Prisma is omitted to keep the architecture lean and close to Supabase’s SQL/RPC model.
+- Admin writes use the server-side Supabase service-role client so role checks and operational actions stay on the server.
+
+## One-time Supabase steps
+
+1. Run [`supabase/schema.sql`](/Users/kaysonnaik/Documents/playground/supabase/schema.sql) in the connected Supabase project.
+2. Run [`supabase/seed.sql`](/Users/kaysonnaik/Documents/playground/supabase/seed.sql) if you want demo data.
+3. If you already created the project before these MVP changes, rerun the schema file so the new `deposit_requests.admin_note`, `balance_transactions`, and `admin_audit_log` objects exist.
+
+## First admin bootstrap
+
+For a fresh deployment, the safest built-in path is:
+
+1. Set `FIRST_ADMIN_EMAIL=you@example.com` in [.env.local](/Users/kaysonnaik/Documents/playground/.env.local) before creating the first real account.
+2. Start the app and sign up using that exact email.
+3. During signup, the app checks whether there are currently zero admin users. If so, and the email matches `FIRST_ADMIN_EMAIL`, that new profile is promoted to `admin`.
+4. After your first admin account is created, remove `FIRST_ADMIN_EMAIL` from `.env.local` and redeploy/restart.
+
+Important details:
+
+- The bootstrap only works when there are no existing admins.
+- The email must match exactly.
+- This keeps the path safe for new deployments without leaving an always-on admin backdoor.
 
 ## Verification status
 
-The environment I built this in does not have `node`, `npm`, or `npx` installed, so I could not run the Next app, typecheck, or lint here. The codebase and setup files are complete, but local verification still needs to be done after installing Node.
-# royce-exchange
+Verified locally in this workspace:
+
+- `npm run typecheck`
+- `npm run build`
