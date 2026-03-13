@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { SCHEMA_NOT_READY_MESSAGE, isSchemaCacheMissingError } from "@/lib/supabase/errors";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 export async function signUpAction(formData: FormData): Promise<void> {
@@ -11,7 +12,7 @@ export async function signUpAction(formData: FormData): Promise<void> {
   const password = String(formData.get("password") || "");
 
   if (!email || !email.includes("@") || password.length < 8) {
-    throw new Error("Use a valid email address and a password with at least 8 characters.");
+    redirect(`/signup?error=${encodeURIComponent("Use a valid email address and a password with at least 8 characters.")}`);
   }
 
   const admin = createAdminClient();
@@ -22,7 +23,7 @@ export async function signUpAction(formData: FormData): Promise<void> {
   });
 
   if (error || !data.user) {
-    throw new Error(error?.message ?? "Unable to create the account.");
+    redirect(`/signup?error=${encodeURIComponent(error?.message ?? "Unable to create the account.")}`);
   }
 
   const { error: profileInsertError } = await admin.from("profiles").insert({
@@ -30,7 +31,11 @@ export async function signUpAction(formData: FormData): Promise<void> {
   });
 
   if (profileInsertError) {
-    throw new Error(profileInsertError.message);
+    await admin.auth.admin.deleteUser(data.user.id);
+    const message = isSchemaCacheMissingError(profileInsertError)
+      ? SCHEMA_NOT_READY_MESSAGE
+      : profileInsertError.message;
+    redirect(`/signup?error=${encodeURIComponent(message)}`);
   }
 
   const supabase = await createServerSupabaseClient();
@@ -40,7 +45,7 @@ export async function signUpAction(formData: FormData): Promise<void> {
   });
 
   if (signInError) {
-    throw new Error(signInError.message);
+    redirect(`/signup?error=${encodeURIComponent(signInError.message)}`);
   }
 
   revalidatePath("/");

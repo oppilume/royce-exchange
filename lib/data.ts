@@ -1,15 +1,17 @@
 import { cache } from "react";
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isSchemaCacheMissingError } from "@/lib/supabase/errors";
 
 export const getFeaturedMarkets = cache(async () => {
   const supabase = createAdminClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("market_cards")
     .select("*")
     .in("phase", ["Live", "Voting"])
     .order("total_volume", { ascending: false })
     .limit(4);
+  if (isSchemaCacheMissingError(error)) return [];
   return data ?? [];
 });
 
@@ -33,22 +35,39 @@ export const getMarkets = cache(async (filters?: Record<string, string | undefin
   if (sort === "closing") query = query.order("trading_close_at", { ascending: true });
   if (sort === "activity") query = query.order("updated_at", { ascending: false });
 
-  const { data } = await query.limit(50);
+  const { data, error } = await query.limit(50);
+  if (isSchemaCacheMissingError(error)) return [];
   return data ?? [];
 });
 
 export const getMarket = cache(async (marketId: string) => {
   const supabase = createAdminClient();
-  const { data: market } = await supabase
+  const { data: market, error: marketError } = await supabase
     .from("market_cards")
     .select("*")
     .eq("id", marketId)
     .maybeSingle();
 
-  const [{ data: positions }, { data: votes }] = await Promise.all([
+  if (isSchemaCacheMissingError(marketError)) {
+    return {
+      market: null,
+      positions: [],
+      votes: []
+    };
+  }
+
+  const [{ data: positions, error: positionsError }, { data: votes, error: votesError }] = await Promise.all([
     supabase.from("market_positions").select("*").eq("market_id", marketId),
     supabase.from("market_votes").select("vote, comment, created_at, profiles(username)").eq("market_id", marketId)
   ]);
+
+  if (isSchemaCacheMissingError(positionsError) || isSchemaCacheMissingError(votesError)) {
+    return {
+      market,
+      positions: [],
+      votes: []
+    };
+  }
 
   return {
     market,
@@ -59,11 +78,27 @@ export const getMarket = cache(async (marketId: string) => {
 
 export const getHomepageStats = cache(async () => {
   const supabase = createAdminClient();
-  const [{ count: marketCount }, { count: traderCount }, { data: volumeRow }] = await Promise.all([
+  const [
+    { count: marketCount, error: marketCountError },
+    { count: traderCount, error: traderCountError },
+    { data: volumeRow, error: volumeError }
+  ] = await Promise.all([
     supabase.from("markets").select("*", { count: "exact", head: true }).neq("status", "deleted"),
     supabase.from("profiles").select("*", { count: "exact", head: true }),
     supabase.from("platform_stats").select("*").maybeSingle()
   ]);
+
+  if (
+    isSchemaCacheMissingError(marketCountError) ||
+    isSchemaCacheMissingError(traderCountError) ||
+    isSchemaCacheMissingError(volumeError)
+  ) {
+    return {
+      marketCount: 0,
+      traderCount: 0,
+      totalVolume: 0
+    };
+  }
 
   return {
     marketCount: marketCount ?? 0,
@@ -75,33 +110,43 @@ export const getHomepageStats = cache(async () => {
 export const getLeaderboard = cache(async (window: "all" | "weekly" = "all") => {
   const supabase = createAdminClient();
   const table = window === "weekly" ? "leaderboard_weekly" : "leaderboard_all_time";
-  const { data } = await supabase.from(table).select("*").limit(50);
+  const { data, error } = await supabase.from(table).select("*").limit(50);
+  if (isSchemaCacheMissingError(error)) return [];
   return data ?? [];
 });
 
 export const getUserProfileData = cache(async (username: string) => {
   const supabase = createAdminClient();
-  const { data: profile } = await supabase
+  const { data: profile, error } = await supabase
     .from("public_profile_stats")
     .select("*")
     .eq("username", username)
     .maybeSingle();
 
+  if (isSchemaCacheMissingError(error)) return null;
   if (!profile) return null;
 
-  const { data: activity } = await supabase
+  const { data: activity, error: activityError } = await supabase
     .from("transactions")
     .select("id, type, amount_gems, description, created_at, market_id")
     .eq("user_id", profile.id)
     .order("created_at", { ascending: false })
     .limit(10);
 
+  if (isSchemaCacheMissingError(activityError)) {
+    return { profile, activity: [] };
+  }
+
   return { profile, activity: activity ?? [] };
 });
 
 export const getPortfolioData = cache(async (userId: string) => {
   const supabase = createAdminClient();
-  const [{ data: positions }, { data: transactions }, { data: stats }] = await Promise.all([
+  const [
+    { data: positions, error: positionsError },
+    { data: transactions, error: transactionsError },
+    { data: stats, error: statsError }
+  ] = await Promise.all([
     supabase
       .from("portfolio_positions")
       .select("*")
@@ -116,6 +161,18 @@ export const getPortfolioData = cache(async (userId: string) => {
     supabase.from("public_profile_stats").select("*").eq("id", userId).maybeSingle()
   ]);
 
+  if (
+    isSchemaCacheMissingError(positionsError) ||
+    isSchemaCacheMissingError(transactionsError) ||
+    isSchemaCacheMissingError(statsError)
+  ) {
+    return {
+      positions: [],
+      transactions: [],
+      stats: null
+    };
+  }
+
   return {
     positions: positions ?? [],
     transactions: transactions ?? [],
@@ -125,7 +182,12 @@ export const getPortfolioData = cache(async (userId: string) => {
 
 export const getAdminDashboardData = cache(async () => {
   const supabase = createAdminClient();
-  const [{ data: pending }, { data: deposits }, { data: stats }, { data: users }] = await Promise.all([
+  const [
+    { data: pending, error: pendingError },
+    { data: deposits, error: depositsError },
+    { data: stats, error: statsError },
+    { data: users, error: usersError }
+  ] = await Promise.all([
     supabase
       .from("market_cards")
       .select("*")
@@ -143,6 +205,20 @@ export const getAdminDashboardData = cache(async () => {
       .order("gem_balance", { ascending: false })
       .limit(20)
   ]);
+
+  if (
+    isSchemaCacheMissingError(pendingError) ||
+    isSchemaCacheMissingError(depositsError) ||
+    isSchemaCacheMissingError(statsError) ||
+    isSchemaCacheMissingError(usersError)
+  ) {
+    return {
+      pending: [],
+      deposits: [],
+      stats: null,
+      users: []
+    };
+  }
 
   return {
     pending: pending ?? [],

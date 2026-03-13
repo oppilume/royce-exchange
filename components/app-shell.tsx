@@ -5,6 +5,7 @@ import { logoutAction } from "@/app/actions/auth";
 import { Badge } from "@/components/ui/badge";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isSchemaCacheMissingError } from "@/lib/supabase/errors";
 import { formatGems, formatUsdHint } from "@/lib/utils";
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
@@ -23,12 +24,14 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
 
   if (user) {
     const admin = createAdminClient();
-    const { data } = await admin
+    const { data, error } = await admin
       .from("profiles")
       .select("username, role, gem_balance")
       .eq("id", user.id)
       .maybeSingle();
-    profile = data;
+    if (!isSchemaCacheMissingError(error)) {
+      profile = data;
+    }
   }
 
   return (

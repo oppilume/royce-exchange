@@ -4,7 +4,14 @@ import { signUpAction } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-export default function SignUpPage() {
+export default async function SignUpPage({
+  searchParams
+}: {
+  searchParams: Promise<Record<string, string | undefined>>;
+}) {
+  const params = await searchParams;
+  const error = params.error;
+
   return (
     <div className="mx-auto max-w-md">
       <form action={signUpAction} className="glass-panel space-y-5 p-8">
@@ -15,6 +22,11 @@ export default function SignUpPage() {
             Create your account with an email and password. You can add a display username later.
           </p>
         </div>
+        {error ? (
+          <div className="rounded-2xl border border-danger/35 bg-danger/10 px-4 py-3 text-sm text-danger">
+            {error}
+          </div>
+        ) : null}
         <Input name="email" type="email" placeholder="Email" required />
         <Input name="password" type="password" placeholder="Password (8+ chars)" required />
         <Button type="submit" fullWidth>

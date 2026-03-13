@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isSchemaCacheMissingError } from "@/lib/supabase/errors";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 export async function getSessionProfile() {
@@ -14,11 +15,15 @@ export async function getSessionProfile() {
   }
 
   const admin = createAdminClient();
-  const { data: profile } = await admin
+  const { data: profile, error } = await admin
     .from("profiles")
     .select("*")
     .eq("id", user.id)
     .maybeSingle();
+
+  if (isSchemaCacheMissingError(error)) {
+    return { user, profile: null };
+  }
 
   return { user, profile };
 }
