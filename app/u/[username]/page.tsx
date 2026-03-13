@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
 import { getUserProfileData } from "@/lib/data";
-import { formatGems, formatPct } from "@/lib/utils";
+import { formatDateTimePst, formatGems, formatPct } from "@/lib/utils";
 
 export default async function PublicProfilePage({
   params
@@ -40,7 +40,7 @@ export default async function PublicProfilePage({
             <div key={item.id} className="flex items-center justify-between px-6 py-4 text-sm">
               <div>
                 <p className="font-medium">{item.description}</p>
-                <p className="text-cream/55">{new Date(item.created_at).toLocaleString()}</p>
+                <p className="text-cream/55">{formatDateTimePst(item.created_at)}</p>
               </div>
               <p className={Number(item.amount_gems) >= 0 ? "text-mint" : "text-danger"}>
                 {Number(item.amount_gems) >= 0 ? "+" : ""}

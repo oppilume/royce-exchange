@@ -12,7 +12,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input, Textarea } from "@/components/ui/input";
-import { formatGems } from "@/lib/utils";
+import { formatDateTimePst, formatGems } from "@/lib/utils";
 
 export function AdminTabs({ currentTab }: { currentTab: string }) {
   const tabs = [
@@ -296,7 +296,7 @@ export function AuditLogPanel({ auditLog, balanceTransactions }: { auditLog: Rec
                 <p className="mt-1 text-cream/60">
                   {String(item.target_type)} · {String(item.target_id)}
                 </p>
-                <p className="mt-1 text-cream/45">{new Date(String(item.created_at)).toLocaleString()}</p>
+                <p className="mt-1 text-cream/45">{formatDateTimePst(String(item.created_at))}</p>
               </div>
             ))
           ) : (

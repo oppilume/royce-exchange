@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Clock3, GraduationCap, Tag } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { formatGems, formatMarketPhase, yesNoPrice } from "@/lib/utils";
+import { formatDatePst, formatDateTimePst, formatGems, formatMarketPhase, yesNoPrice } from "@/lib/utils";
 import type { MarketRow } from "@/lib/types";
 
 export function MarketCard({ market }: { market: MarketRow & { phase?: string } }) {
@@ -33,7 +33,7 @@ export function MarketCard({ market }: { market: MarketRow & { phase?: string } 
         <MetaChip icon={<GraduationCap className="h-3.5 w-3.5" />} text={market.teacher_name} />
         <MetaChip icon={<Tag className="h-3.5 w-3.5" />} text={market.course_name} />
         <MetaChip text={`Period ${market.class_period}`} />
-        <MetaChip text={new Date(market.market_date).toLocaleDateString()} />
+        <MetaChip text={formatDatePst(market.market_date)} />
       </div>
 
       <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
@@ -47,7 +47,7 @@ export function MarketCard({ market }: { market: MarketRow & { phase?: string } 
         </div>
         <div className="flex items-center gap-2 rounded-2xl border border-white/10 px-4 py-3 text-sm text-cream/70">
           <Clock3 className="h-4 w-4" />
-          Closes {new Date(market.trading_close_at).toLocaleString()}
+          Closes {formatDateTimePst(market.trading_close_at)}
         </div>
       </div>
     </Link>

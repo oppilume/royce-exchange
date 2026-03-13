@@ -6,7 +6,7 @@ import { TradeForm } from "@/components/trade-form";
 import { VoteForm } from "@/components/vote-form";
 import { getSessionProfile } from "@/lib/auth";
 import { getMarket } from "@/lib/data";
-import { formatGems, formatMarketPhase, yesNoPrice } from "@/lib/utils";
+import { formatDateTimePst, formatGems, formatMarketPhase, yesNoPrice } from "@/lib/utils";
 
 export default async function MarketDetailPage({
   params
@@ -51,19 +51,17 @@ export default async function MarketDetailPage({
           <div className="mt-8 grid gap-4 rounded-3xl border border-white/10 bg-white/5 p-5 text-sm text-cream/70 md:grid-cols-3">
             <div>
               <p className="text-xs uppercase tracking-[0.18em] text-cream/45">Trading closes</p>
-              <p className="mt-2 text-cream">{new Date(market.trading_close_at).toLocaleString()}</p>
+              <p className="mt-2 text-cream">{formatDateTimePst(market.trading_close_at)}</p>
             </div>
             <div>
               <p className="text-xs uppercase tracking-[0.18em] text-cream/45">Voting opens</p>
-              <p className="mt-2 text-cream">{new Date(market.vote_start_at).toLocaleString()}</p>
+              <p className="mt-2 text-cream">{formatDateTimePst(market.vote_start_at)}</p>
             </div>
             <div>
               <p className="text-xs uppercase tracking-[0.18em] text-cream/45">Resolution</p>
               <p className="mt-2 text-cream">
                 {market.resolved_outcome
-                  ? `${market.resolved_outcome.toUpperCase()} at ${new Date(
-                      market.resolved_at!
-                    ).toLocaleString()}`
+                  ? `${market.resolved_outcome.toUpperCase()} at ${formatDateTimePst(market.resolved_at!)}`
                   : "Awaiting votes or admin action"}
               </p>
             </div>

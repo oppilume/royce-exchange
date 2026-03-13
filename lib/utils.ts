@@ -1,6 +1,24 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
+const PACIFIC_TIMEZONE = "America/Los_Angeles";
+const pacificDateFormatter = new Intl.DateTimeFormat("en-US", {
+  timeZone: PACIFIC_TIMEZONE,
+  month: "short",
+  day: "numeric",
+  year: "numeric"
+});
+const pacificDateTimeFormatter = new Intl.DateTimeFormat("en-US", {
+  timeZone: PACIFIC_TIMEZONE,
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+  hour12: true,
+  timeZoneName: "short"
+});
+
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
@@ -17,6 +35,14 @@ export function formatUsdHint(value: number | string | null | undefined) {
 
 export function formatPct(value: number | string | null | undefined) {
   return `${Number(value ?? 0).toFixed(1)}%`;
+}
+
+export function formatDatePst(value: string | Date) {
+  return pacificDateFormatter.format(new Date(value));
+}
+
+export function formatDateTimePst(value: string | Date) {
+  return pacificDateTimeFormatter.format(new Date(value));
 }
 
 export function formatMarketPhase(market: {

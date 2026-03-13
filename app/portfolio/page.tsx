@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { requireUser } from "@/lib/auth";
 import { getPortfolioData } from "@/lib/data";
-import { formatGems, formatPct, formatUsdHint } from "@/lib/utils";
+import { formatDateTimePst, formatGems, formatPct, formatUsdHint } from "@/lib/utils";
 
 export default async function PortfolioPage({
   searchParams
@@ -61,7 +61,7 @@ export default async function PortfolioPage({
                     YES {position.yes_shares} / NO {position.no_shares} · Cost basis{" "}
                     {formatGems(position.total_cost_basis)}
                   </p>
-                  <p className="mt-1 text-sm text-cream/60">Latest trade {new Date(position.latest_trade_at).toLocaleString()}</p>
+                  <p className="mt-1 text-sm text-cream/60">Latest trade {formatDateTimePst(position.latest_trade_at)}</p>
                 </div>
               ))
             ) : (
@@ -79,7 +79,7 @@ export default async function PortfolioPage({
               <div key={transaction.id} className="flex items-center justify-between px-6 py-4 text-sm">
                 <div>
                   <p className="font-medium">{transaction.description}</p>
-                  <p className="text-cream/55">{new Date(transaction.created_at).toLocaleString()}</p>
+                  <p className="text-cream/55">{formatDateTimePst(transaction.created_at)}</p>
                 </div>
                 <p className={Number(transaction.amount_gems) >= 0 ? "text-mint" : "text-danger"}>
                   {Number(transaction.amount_gems) >= 0 ? "+" : ""}
@@ -105,7 +105,7 @@ export default async function PortfolioPage({
                 </div>
                 <div className="text-right">
                   <p className="font-medium capitalize">{request.status}</p>
-                  <p className="text-cream/45">{new Date(request.created_at).toLocaleString()}</p>
+                  <p className="text-cream/45">{formatDateTimePst(request.created_at)}</p>
                 </div>
               </div>
             ))
