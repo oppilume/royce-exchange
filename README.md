@@ -106,18 +106,16 @@ npm run dev
 
 ## Demo accounts
 
-- Admin username: `admin`
+- Admin email: `admin@example.com`
 - Admin password: `jayhawkadmin`
 - User password for seeded users: `password123`
-- Seeded usernames: `alex`, `mila`, `jordan`, `zoe`, `samir`
+- Seeded emails: `alex@example.com`, `mila@example.com`, `jordan@example.com`, `zoe@example.com`, `samir@example.com`
 
 ## Auth flow
 
-- Signup asks for `username` and `password`.
-- Supabase Auth still requires an email internally, so the app generates a hidden synthetic email in the format `username@jayhawkgems.local`.
-- Signup uses the server-side admin API to create and auto-confirm the auth user, then signs the user in immediately.
-- A trigger on `auth.users` creates the matching `profiles` row automatically.
-- Login accepts username + password by looking up the stored auth email server-side, then calling Supabase password auth.
+- Signup asks for `email` and `password`.
+- Signup uses the server-side admin API to create and auto-confirm the auth user, then inserts the matching `profiles` row using the auth user id.
+- Login signs in directly with email + password through Supabase Auth.
 
 ## Core backend rules
 

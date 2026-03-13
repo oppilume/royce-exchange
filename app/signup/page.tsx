@@ -12,10 +12,10 @@ export default function SignUpPage() {
           <p className="text-xs uppercase tracking-[0.18em] text-gold/70">Create account</p>
           <h1 className="mt-1 text-3xl font-semibold">Join Jayhawk Gems</h1>
           <p className="mt-2 text-sm text-cream/65">
-            Accounts are username-first, while Supabase auth stores a hidden internal email.
+            Create your account with an email and password. You can add a display username later.
           </p>
         </div>
-        <Input name="username" placeholder="Username" required />
+        <Input name="email" type="email" placeholder="Email" required />
         <Input name="password" type="password" placeholder="Password (8+ chars)" required />
         <Button type="submit" fullWidth>
           Create account

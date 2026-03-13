@@ -12,10 +12,10 @@ export default function LoginPage() {
           <p className="text-xs uppercase tracking-[0.18em] text-gold/70">Log in</p>
           <h1 className="mt-1 text-3xl font-semibold">Welcome back</h1>
           <p className="mt-2 text-sm text-cream/65">
-            Log in with your username and password.
+            Log in with your email and password.
           </p>
         </div>
-        <Input name="username" placeholder="Username" required />
+        <Input name="email" type="email" placeholder="Email" required />
         <Input name="password" type="password" placeholder="Password" required />
         <Button type="submit" fullWidth>
           Log in

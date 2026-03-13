@@ -15,7 +15,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
 
   let profile:
     | {
-        username: string;
+        username: string | null;
         role: string;
         gem_balance: number;
       }
@@ -69,9 +69,13 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
                   <p className="text-sm font-semibold">{formatGems(profile.gem_balance)}</p>
                   <p className="text-xs text-cream/55">{formatUsdHint(profile.gem_balance)}</p>
                 </div>
-                <Link href={`/u/${profile.username}`} className="text-sm font-medium text-cream/80">
-                  @{profile.username}
-                </Link>
+                {profile.username ? (
+                  <Link href={`/u/${profile.username}`} className="text-sm font-medium text-cream/80">
+                    @{profile.username}
+                  </Link>
+                ) : (
+                  <span className="text-sm font-medium text-cream/80">{user?.email ?? "Account"}</span>
+                )}
                 <form action={logoutAction}>
                   <button className="text-sm font-medium text-cream/65 hover:text-cream" type="submit">
                     Log out

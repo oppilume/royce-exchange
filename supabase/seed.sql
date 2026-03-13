@@ -17,32 +17,26 @@ insert into auth.users (
   confirmation_token, email_change, email_change_token_new, recovery_token
 )
 values
-  ('00000000-0000-0000-0000-000000000000', '20000000-0000-0000-0000-000000000001', 'authenticated', 'authenticated', 'admin@jayhawkgems.local', crypt('jayhawkadmin', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"username":"admin"}', now(), now(), '', '', '', ''),
-  ('00000000-0000-0000-0000-000000000000', '20000000-0000-0000-0000-000000000002', 'authenticated', 'authenticated', 'alex@jayhawkgems.local', crypt('password123', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"username":"alex"}', now(), now(), '', '', '', ''),
-  ('00000000-0000-0000-0000-000000000000', '20000000-0000-0000-0000-000000000003', 'authenticated', 'authenticated', 'mila@jayhawkgems.local', crypt('password123', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"username":"mila"}', now(), now(), '', '', '', ''),
-  ('00000000-0000-0000-0000-000000000000', '20000000-0000-0000-0000-000000000004', 'authenticated', 'authenticated', 'jordan@jayhawkgems.local', crypt('password123', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"username":"jordan"}', now(), now(), '', '', '', ''),
-  ('00000000-0000-0000-0000-000000000000', '20000000-0000-0000-0000-000000000005', 'authenticated', 'authenticated', 'zoe@jayhawkgems.local', crypt('password123', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"username":"zoe"}', now(), now(), '', '', '', ''),
-  ('00000000-0000-0000-0000-000000000000', '20000000-0000-0000-0000-000000000006', 'authenticated', 'authenticated', 'samir@jayhawkgems.local', crypt('password123', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"username":"samir"}', now(), now(), '', '', '', '')
+  ('00000000-0000-0000-0000-000000000000', '20000000-0000-0000-0000-000000000001', 'authenticated', 'authenticated', 'admin@example.com', crypt('jayhawkadmin', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"username":"admin"}', now(), now(), '', '', '', ''),
+  ('00000000-0000-0000-0000-000000000000', '20000000-0000-0000-0000-000000000002', 'authenticated', 'authenticated', 'alex@example.com', crypt('password123', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"username":"alex"}', now(), now(), '', '', '', ''),
+  ('00000000-0000-0000-0000-000000000000', '20000000-0000-0000-0000-000000000003', 'authenticated', 'authenticated', 'mila@example.com', crypt('password123', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"username":"mila"}', now(), now(), '', '', '', ''),
+  ('00000000-0000-0000-0000-000000000000', '20000000-0000-0000-0000-000000000004', 'authenticated', 'authenticated', 'jordan@example.com', crypt('password123', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"username":"jordan"}', now(), now(), '', '', '', ''),
+  ('00000000-0000-0000-0000-000000000000', '20000000-0000-0000-0000-000000000005', 'authenticated', 'authenticated', 'zoe@example.com', crypt('password123', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"username":"zoe"}', now(), now(), '', '', '', ''),
+  ('00000000-0000-0000-0000-000000000000', '20000000-0000-0000-0000-000000000006', 'authenticated', 'authenticated', 'samir@example.com', crypt('password123', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"username":"samir"}', now(), now(), '', '', '', '')
 on conflict (id) do nothing;
 
-update public.profiles set
-  role = case when id = '20000000-0000-0000-0000-000000000001' then 'admin' else 'user' end,
-  gem_balance = case
-    when id = '20000000-0000-0000-0000-000000000001' then 100000
-    when id = '20000000-0000-0000-0000-000000000002' then 14000
-    when id = '20000000-0000-0000-0000-000000000003' then 12800
-    when id = '20000000-0000-0000-0000-000000000004' then 9200
-    when id = '20000000-0000-0000-0000-000000000005' then 7100
-    else 6600
-  end,
-  bio = case
-    when id = '20000000-0000-0000-0000-000000000002' then 'APUSH specialist and fast-reacting YES buyer.'
-    when id = '20000000-0000-0000-0000-000000000003' then 'Chem and Algebra markets only.'
-    when id = '20000000-0000-0000-0000-000000000004' then 'Fade the hype. Buy NO.'
-    when id = '20000000-0000-0000-0000-000000000005' then 'English class volatility enjoyer.'
-    when id = '20000000-0000-0000-0000-000000000006' then 'Mostly trading participation-point setups.'
-    else 'Platform admin.'
-  end;
+insert into public.profiles (id, username, role, gem_balance, bio) values
+  ('20000000-0000-0000-0000-000000000001', 'admin', 'admin', 100000, 'Platform admin.'),
+  ('20000000-0000-0000-0000-000000000002', 'alex', 'user', 14000, 'APUSH specialist and fast-reacting YES buyer.'),
+  ('20000000-0000-0000-0000-000000000003', 'mila', 'user', 12800, 'Chem and Algebra markets only.'),
+  ('20000000-0000-0000-0000-000000000004', 'jordan', 'user', 9200, 'Fade the hype. Buy NO.'),
+  ('20000000-0000-0000-0000-000000000005', 'zoe', 'user', 7100, 'English class volatility enjoyer.'),
+  ('20000000-0000-0000-0000-000000000006', 'samir', 'user', 6600, 'Mostly trading participation-point setups.')
+on conflict (id) do update set
+  username = excluded.username,
+  role = excluded.role,
+  gem_balance = excluded.gem_balance,
+  bio = excluded.bio;
 
 insert into public.markets (
   id, creator_id, teacher_name, prediction_text, course_name, class_period, market_date,

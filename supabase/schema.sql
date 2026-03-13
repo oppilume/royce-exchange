@@ -9,8 +9,7 @@ create type public.deposit_status as enum ('pending', 'approved', 'rejected');
 
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
-  username text unique not null check (char_length(username) >= 3),
-  auth_email text unique not null,
+  username text unique check (username is null or char_length(username) >= 3),
   role public.user_role not null default 'user',
   gem_balance bigint not null default 0 check (gem_balance >= 0),
   bio text,
@@ -129,27 +128,7 @@ create table if not exists public.deposit_requests (
   created_at timestamptz not null default timezone('utc', now())
 );
 
-create or replace function public.handle_new_user()
-returns trigger
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  generated_username text;
-begin
-  generated_username := regexp_replace(split_part(new.email, '@', 1), '[^a-zA-Z0-9_]', '', 'g');
-  insert into public.profiles (id, username, auth_email)
-  values (new.id, lower(generated_username), new.email)
-  on conflict (id) do nothing;
-  return new;
-end;
-$$;
-
 drop trigger if exists on_auth_user_created on auth.users;
-create trigger on_auth_user_created
-after insert on auth.users
-for each row execute procedure public.handle_new_user();
 
 create or replace function public.touch_updated_at()
 returns trigger

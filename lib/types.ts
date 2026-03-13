@@ -24,7 +24,7 @@ export type MarketRow = {
 
 export type ProfileRow = {
   id: string;
-  username: string;
+  username: string | null;
   role: UserRole;
   gem_balance: number;
   bio: string | null;

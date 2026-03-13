@@ -8,13 +8,14 @@ import { formatGems, formatPct, formatUsdHint } from "@/lib/utils";
 export default async function PortfolioPage() {
   const { user, profile } = await requireUser();
   const portfolio = await getPortfolioData(user.id);
+  const headingLabel = profile.username ? `@${profile.username}` : user.email ?? "Your account";
 
   return (
     <div className="space-y-8">
       <section className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
         <div className="glass-panel p-6">
           <p className="text-xs uppercase tracking-[0.18em] text-gold/70">Portfolio</p>
-          <h1 className="mt-1 text-4xl font-semibold">@{profile.username}</h1>
+          <h1 className="mt-1 text-4xl font-semibold">{headingLabel}</h1>
           <div className="mt-6 data-grid">
             <Metric label="Balance" value={formatGems(profile.gem_balance)} hint={formatUsdHint(profile.gem_balance)} />
             <Metric label="Profit" value={formatGems(portfolio.stats?.total_profit ?? 0)} hint="All time" />
