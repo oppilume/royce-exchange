@@ -29,8 +29,11 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       .select("username, role, gem_balance")
       .eq("id", user.id)
       .maybeSingle();
-    if (!isSchemaCacheMissingError(error)) {
+
+    if (!error) {
       profile = data;
+    } else if (!isSchemaCacheMissingError(error)) {
+      profile = null;
     }
   }
 
@@ -66,18 +69,25 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           </nav>
 
           <div className="flex items-center gap-3">
-            {profile ? (
+            {user ? (
               <>
-                <div className="hidden rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-right sm:block">
-                  <p className="text-sm font-semibold">{formatGems(profile.gem_balance)}</p>
-                  <p className="text-xs text-cream/55">{formatUsdHint(profile.gem_balance)}</p>
-                </div>
-                {profile.username ? (
+                {profile ? (
+                  <div className="hidden rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-right sm:block">
+                    <p className="text-sm font-semibold">{formatGems(profile.gem_balance)}</p>
+                    <p className="text-xs text-cream/55">{formatUsdHint(profile.gem_balance)}</p>
+                  </div>
+                ) : (
+                  <div className="hidden rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-right sm:block">
+                    <p className="text-sm font-semibold">Signed in</p>
+                    <p className="text-xs text-cream/55">Profile syncing</p>
+                  </div>
+                )}
+                {profile?.username ? (
                   <Link href={`/u/${profile.username}`} className="text-sm font-medium text-cream/80">
                     @{profile.username}
                   </Link>
                 ) : (
-                  <span className="text-sm font-medium text-cream/80">{user?.email ?? "Account"}</span>
+                  <span className="text-sm font-medium text-cream/80">{user.email ?? "Account"}</span>
                 )}
                 <form action={logoutAction}>
                   <button className="text-sm font-medium text-cream/65 hover:text-cream" type="submit">

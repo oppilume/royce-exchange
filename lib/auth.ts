@@ -25,12 +25,42 @@ export async function getSessionProfile() {
     return { user, profile: null };
   }
 
-  return { user, profile };
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (profile) {
+    return { user, profile };
+  }
+
+  const fallbackUsername =
+    typeof user.user_metadata?.username === "string" && user.user_metadata.username.trim().length >= 3
+      ? user.user_metadata.username.trim().toLowerCase()
+      : null;
+
+  const { data: insertedProfile, error: insertError } = await admin
+    .from("profiles")
+    .insert({
+      id: user.id,
+      username: fallbackUsername
+    })
+    .select("*")
+    .maybeSingle();
+
+  if (isSchemaCacheMissingError(insertError)) {
+    return { user, profile: null };
+  }
+
+  if (insertError) {
+    return { user, profile: null };
+  }
+
+  return { user, profile: insertedProfile ?? null };
 }
 
 export async function requireUser() {
   const { user, profile } = await getSessionProfile();
-  if (!user || !profile) {
+  if (!user) {
     redirect("/login");
   }
 
@@ -39,11 +69,11 @@ export async function requireUser() {
 
 export async function requireAdmin() {
   const { user, profile } = await getSessionProfile();
-  if (!user || !profile) {
+  if (!user) {
     redirect("/login");
   }
 
-  if (profile.role !== "admin") {
+  if (!profile || profile.role !== "admin") {
     redirect("/markets");
   }
 

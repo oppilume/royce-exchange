@@ -8,7 +8,7 @@ import { formatGems, formatPct, formatUsdHint } from "@/lib/utils";
 export default async function PortfolioPage() {
   const { user, profile } = await requireUser();
   const portfolio = await getPortfolioData(user.id);
-  const headingLabel = profile.username ? `@${profile.username}` : user.email ?? "Your account";
+  const headingLabel = profile?.username ? `@${profile.username}` : user.email ?? "Your account";
 
   return (
     <div className="space-y-8">
@@ -17,7 +17,11 @@ export default async function PortfolioPage() {
           <p className="text-xs uppercase tracking-[0.18em] text-gold/70">Portfolio</p>
           <h1 className="mt-1 text-4xl font-semibold">{headingLabel}</h1>
           <div className="mt-6 data-grid">
-            <Metric label="Balance" value={formatGems(profile.gem_balance)} hint={formatUsdHint(profile.gem_balance)} />
+            <Metric
+              label="Balance"
+              value={formatGems(profile?.gem_balance ?? 0)}
+              hint={formatUsdHint(profile?.gem_balance ?? 0)}
+            />
             <Metric label="Profit" value={formatGems(portfolio.stats?.total_profit ?? 0)} hint="All time" />
             <Metric label="ROI" value={formatPct(portfolio.stats?.roi_percent ?? 0)} hint="Across resolved markets" />
             <Metric label="Win rate" value={formatPct(portfolio.stats?.win_rate ?? 0)} hint="Resolved picks" />
