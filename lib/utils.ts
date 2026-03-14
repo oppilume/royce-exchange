@@ -37,6 +37,10 @@ export function formatGems(value: number | string | null | undefined) {
   return `${numeric.toLocaleString()} Gems`;
 }
 
+export function formatPriceGems(value: number | string | null | undefined) {
+  return `${Number(value ?? 0).toLocaleString()} Jayhawk Gems`;
+}
+
 export function formatUsdHint(value: number | string | null | undefined) {
   const numeric = Number(value ?? 0) / 100;
   return `$${numeric.toFixed(2)} est.`;
@@ -102,6 +106,7 @@ export function formatMarketPhase(market: {
   status: string;
   trading_close_at?: string;
   vote_start_at?: string;
+  vote_end_at?: string | null;
   resolved_outcome?: string | null;
 }) {
   if (market.status === "pending") return "Pending review";
@@ -112,10 +117,12 @@ export function formatMarketPhase(market: {
   const now = new Date();
   const close = market.trading_close_at ? new Date(market.trading_close_at) : null;
   const voteStart = market.vote_start_at ? new Date(market.vote_start_at) : null;
+  const voteEnd = market.vote_end_at ? new Date(market.vote_end_at) : null;
 
   if (close && now < close) return "Live";
   if (close && voteStart && now >= close && now < voteStart) return "Closed";
-  if (voteStart && now >= voteStart) return "Voting";
+  if (voteStart && (!voteEnd || now < voteEnd) && now >= voteStart) return "Voting";
+  if (voteEnd && now >= voteEnd) return "Awaiting resolution";
   return "Approved";
 }
 

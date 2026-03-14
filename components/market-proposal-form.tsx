@@ -12,23 +12,21 @@ export function MarketProposalForm() {
     <form action={action} className="grid gap-5 lg:grid-cols-[1.35fr_0.95fr]">
       <div className="glass-panel grid gap-4 p-6">
         <div className="grid gap-4 md:grid-cols-2">
-          <Field label="Teacher name">
+          <input type="hidden" name="market_type" value="exact_phrase" />
+          <Field label="Teacher">
             <Input name="teacher_name" placeholder="Mr. Thompson" required />
           </Field>
-          <Field label="Course">
-            <Input name="course_name" placeholder="APUSH" required />
+          <Field label="Class">
+            <Input name="course_name" placeholder="AP U.S. History" required />
           </Field>
-          <Field label="Phrase or topic">
+          <Field label="Phrase">
             <Input name="prediction_text" placeholder='"pop quiz" or "midterm"' required />
           </Field>
-          <Field label="Class period">
-            <Input name="class_period" placeholder="3" required />
+          <Field label="Block">
+            <Input name="class_period" placeholder="B" required />
           </Field>
-          <Field label="Market date">
+          <Field label="Day">
             <Input name="market_date" type="date" required />
-          </Field>
-          <Field label="Category">
-            <Input name="category_name" placeholder="quiz/exam" required />
           </Field>
           <Field label="Trading closes">
             <Input name="trading_close_at" type="datetime-local" required />
@@ -38,21 +36,10 @@ export function MarketProposalForm() {
           </Field>
         </div>
 
-        <Field label="Market type">
-          <select
-            name="market_type"
-            className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-sm"
-            defaultValue="exact_phrase"
-          >
-            <option value="exact_phrase">Exact phrase</option>
-            <option value="broader_mention">Broader mention</option>
-          </select>
-        </Field>
-
         <Field label="Clarification notes">
           <Textarea
             name="notes"
-            placeholder="Any context admins or traders should know about class timing, wording, or what counts."
+            placeholder="Optional context about what counts, timing, or any class-specific details."
           />
         </Field>
 
@@ -64,7 +51,7 @@ export function MarketProposalForm() {
       <div className="glass-panel space-y-5 p-6">
         <div>
           <p className="text-xs uppercase tracking-[0.18em] text-gold/70">Proposal preview</p>
-          <h3 className="mt-2 text-2xl font-semibold">Will [Teacher] say [Phrase] during [Period] [Course]?</h3>
+          <h3 className="mt-2 text-2xl font-semibold">Will [Teacher] say or mention [Phrase] during [Block] block [Class]?</h3>
           <p className="mt-3 text-sm text-cream/65">
             Approved markets become immutable except for admin deletion or resolution.
           </p>

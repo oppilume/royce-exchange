@@ -13,6 +13,7 @@ export type MarketRow = {
   notes: string | null;
   trading_close_at: string;
   vote_start_at: string;
+  vote_end_at?: string | null;
   status: string;
   yes_price: number;
   total_volume: number;

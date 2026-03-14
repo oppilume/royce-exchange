@@ -9,6 +9,8 @@ export default async function MarketsPage({
 }) {
   const params = await searchParams;
   const markets = await getMarkets(params);
+  const liveMarkets = markets.filter((market) => market.phase === "Live");
+  const previousMarkets = markets.filter((market) => market.phase !== "Live");
 
   return (
     <div className="space-y-8">
@@ -17,19 +19,28 @@ export default async function MarketsPage({
           <p className="text-xs uppercase tracking-[0.18em] text-gold/70">Browse markets</p>
           <h1 className="mt-1 text-4xl font-semibold">School predictions with actual structure</h1>
           <p className="mt-3 max-w-2xl text-cream/68">
-            Filter by teacher, course, period, date, category, or status. Trade closes before class
-            starts and voting opens afterward.
+            Filter by teacher, class, block, date, or status. Live markets stay separate from previous markets.
           </p>
         </div>
       </section>
 
-      <form className="glass-panel grid gap-3 p-5 md:grid-cols-2 xl:grid-cols-7">
+      <form className="glass-panel grid gap-3 p-5 md:grid-cols-2 xl:grid-cols-8">
         <Input name="search" placeholder="Search markets" defaultValue={params.search} />
         <Input name="teacher" placeholder="Teacher" defaultValue={params.teacher} />
-        <Input name="course" placeholder="Course" defaultValue={params.course} />
-        <Input name="period" placeholder="Period" defaultValue={params.period} />
-        <Input name="category" placeholder="Category" defaultValue={params.category} />
+        <Input name="course" placeholder="Class" defaultValue={params.course} />
+        <Input name="period" placeholder="Block" defaultValue={params.period} />
         <Input name="date" type="date" defaultValue={params.date} />
+        <select
+          name="status"
+          defaultValue={params.status ?? ""}
+          className="rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-sm"
+        >
+          <option value="">All statuses</option>
+          <option value="Live">Live</option>
+          <option value="Voting">Voting</option>
+          <option value="Awaiting resolution">Awaiting resolution</option>
+          <option value="Resolved">Resolved</option>
+        </select>
         <select
           name="sort"
           defaultValue={params.sort ?? "activity"}
@@ -40,13 +51,49 @@ export default async function MarketsPage({
           <option value="volume">Volume</option>
           <option value="closing">Closing soon</option>
         </select>
+        <div className="flex gap-3">
+          <button className="rounded-2xl bg-gold px-4 py-3 text-sm font-semibold text-ink" type="submit">
+            Apply
+          </button>
+          <a href="/markets" className="rounded-2xl border border-white/10 px-4 py-3 text-sm text-cream/70">
+            Reset
+          </a>
+        </div>
       </form>
 
       {markets.length ? (
-        <div className="grid gap-4 xl:grid-cols-2">
-          {markets.map((market) => (
-            <MarketCard key={market.id} market={market} />
-          ))}
+        <div className="space-y-10">
+          <section className="space-y-4">
+            <div>
+              <p className="text-xs uppercase tracking-[0.18em] text-gold/70">Live markets</p>
+              <h2 className="mt-1 text-3xl font-semibold">Open now</h2>
+            </div>
+            {liveMarkets.length ? (
+              <div className="grid gap-4 xl:grid-cols-2">
+                {liveMarkets.map((market) => (
+                  <MarketCard key={market.id} market={market} />
+                ))}
+              </div>
+            ) : (
+              <div className="glass-panel p-8 text-sm text-cream/65">No live markets match those filters.</div>
+            )}
+          </section>
+
+          <section className="space-y-4">
+            <div>
+              <p className="text-xs uppercase tracking-[0.18em] text-gold/70">Previous Markets</p>
+              <h2 className="mt-1 text-3xl font-semibold">Closed or resolved</h2>
+            </div>
+            {previousMarkets.length ? (
+              <div className="grid gap-4 xl:grid-cols-2">
+                {previousMarkets.map((market) => (
+                  <MarketCard key={market.id} market={market} />
+                ))}
+              </div>
+            ) : (
+              <div className="glass-panel p-8 text-sm text-cream/65">No previous markets match those filters.</div>
+            )}
+          </section>
         </div>
       ) : (
         <div className="glass-panel p-10 text-center">

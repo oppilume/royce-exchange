@@ -15,9 +15,9 @@ const display = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "Jayhawk Gems",
+  title: "Royce Exchange",
   description:
-    "A school-specific prediction market where students trade artificial YES/NO markets on what teachers will say in class."
+    "A school-specific prediction market where students use Jayhawk Gems to trade YES/NO markets on what teachers will say in class."
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

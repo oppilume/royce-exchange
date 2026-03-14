@@ -4,10 +4,13 @@ import { ResolveMarketPanel } from "@/components/admin-panels";
 import { StatusBanner } from "@/components/status-banner";
 import { Badge } from "@/components/ui/badge";
 import { TradeForm } from "@/components/trade-form";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/input";
 import { VoteForm } from "@/components/vote-form";
+import { submitMarketReportAction } from "@/app/actions/market";
 import { getSessionProfile } from "@/lib/auth";
 import { getMarket } from "@/lib/data";
-import { formatDateTimePst, formatGems, formatMarketPhase, yesNoPrice } from "@/lib/utils";
+import { formatDateTimePst, formatGems, formatMarketPhase, formatPriceGems, yesNoPrice } from "@/lib/utils";
 
 export default async function MarketDetailPage({
   params,
@@ -47,8 +50,8 @@ export default async function MarketDetailPage({
           </p>
 
           <div className="mt-8 grid gap-3 md:grid-cols-3">
-            <InfoCard label="YES price" value={`${price.yes}c`} accent="mint" />
-            <InfoCard label="NO price" value={`${price.no}c`} accent="danger" />
+            <InfoCard label="YES price" value={formatPriceGems(price.yes)} accent="mint" />
+            <InfoCard label="NO price" value={formatPriceGems(price.no)} accent="danger" />
             <InfoCard label="Volume" value={formatGems(market.total_volume)} accent="sky" />
           </div>
 
@@ -70,6 +73,10 @@ export default async function MarketDetailPage({
             <div>
               <p className="text-xs uppercase tracking-[0.18em] text-cream/45">Voting opens</p>
               <p className="mt-2 text-cream">{formatDateTimePst(market.vote_start_at)}</p>
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-[0.18em] text-cream/45">Voting closes</p>
+              <p className="mt-2 text-cream">{formatDateTimePst(market.vote_end_at ?? market.vote_start_at)}</p>
             </div>
             <div>
               <p className="text-xs uppercase tracking-[0.18em] text-cream/45">Resolution</p>
@@ -117,6 +124,14 @@ export default async function MarketDetailPage({
               <p className="text-cream/55">Price updates with the balance of the YES and NO pools.</p>
             </div>
           </div>
+
+          <form action={submitMarketReportAction} className="glass-panel space-y-4 p-6">
+            <input type="hidden" name="market_id" value={market.id} />
+            <p className="text-lg font-semibold">Report this market</p>
+            <p className="text-sm text-cream/60">If something looks wrong or misleading, send it to admins for review.</p>
+            <Textarea name="reason" placeholder="Explain what needs review" />
+            <Button type="submit" variant="secondary">Send report</Button>
+          </form>
         </div>
       </section>
 

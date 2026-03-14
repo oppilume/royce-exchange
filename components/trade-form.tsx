@@ -1,6 +1,7 @@
 import { placeTradeAction } from "@/app/actions/market";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { formatPriceGems } from "@/lib/utils";
 
 export function TradeForm({
   marketId,
@@ -44,10 +45,10 @@ function TradeSideForm({
       <div>
         <p className="text-xs uppercase tracking-[0.18em] text-cream/45">Buy {side.toUpperCase()}</p>
         <p className={`mt-1 text-3xl font-semibold ${side === "yes" ? "text-mint" : "text-danger"}`}>
-          {price}c
+          {formatPriceGems(price)}
         </p>
         <p className="mt-2 text-sm text-cream/60">
-          {price} Gems per share at the current market price.
+          {formatPriceGems(price)} per share at the current market price.
         </p>
       </div>
       <label className="block">

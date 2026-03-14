@@ -20,14 +20,14 @@ export default async function HomePage() {
       <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-hero p-8 shadow-glow sm:p-12">
         <div className="grid items-end gap-8 lg:grid-cols-[1.2fr_0.8fr]">
           <div>
-            <Badge tone="gold">Jayhawk Gems</Badge>
+            <Badge tone="gold">Royce Exchange</Badge>
             <h1 className="mt-5 max-w-3xl font-display text-5xl font-semibold tracking-tight text-cream sm:text-6xl">
               Trade the moments your teachers are definitely about to say out loud.
             </h1>
             <p className="mt-5 max-w-2xl text-lg leading-8 text-cream/72">
-              Jayhawk Gems is a school-specific prediction market where students use artificial
-              currency to buy YES or NO on class phrases, announcements, catchphrases, and study
-              topics. No real money. No order books. Just clean, credible market gameplay.
+              Royce Exchange is a school-specific prediction market where students use Jayhawk Gems
+              to buy YES or NO on class phrases, announcements, catchphrases, and study topics.
+              No real money. Just clean, credible market gameplay.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link href="/signup">

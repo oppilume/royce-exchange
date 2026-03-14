@@ -47,8 +47,8 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
                 <Gem className="h-5 w-5" />
               </div>
               <div>
-                <p className="font-display text-lg font-semibold tracking-tight">Jayhawk Gems</p>
-                <p className="text-xs text-cream/55">School-market prototype</p>
+                <p className="font-display text-lg font-semibold tracking-tight">Royce Exchange</p>
+                <p className="text-xs text-cream/55">Trade with Jayhawk Gems</p>
               </div>
             </Link>
             <Badge tone="gold">100 Gems = $1</Badge>

@@ -18,7 +18,7 @@ export default async function SignUpPage({
       <form action={signUpAction} className="glass-panel space-y-5 p-8">
         <div>
           <p className="text-xs uppercase tracking-[0.18em] text-gold/70">Create account</p>
-          <h1 className="mt-1 text-3xl font-semibold">Join Jayhawk Gems</h1>
+          <h1 className="mt-1 text-3xl font-semibold">Join Royce Exchange</h1>
           <p className="mt-2 text-sm text-cream/65">
             Create your account with an email and password. You can add a display username later.
           </p>

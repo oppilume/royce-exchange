@@ -23,7 +23,6 @@ export const getMarkets = cache(async (filters?: Record<string, string | undefin
   if (filters?.course) query = query.ilike("course_name", `%${filters.course}%`);
   if (filters?.period) query = query.eq("class_period", filters.period);
   if (filters?.status) query = query.eq("phase", filters.status);
-  if (filters?.category) query = query.ilike("category_name", `%${filters.category}%`);
   if (filters?.date) query = query.eq("market_date", filters.date);
   if (filters?.search) query = query.or(
     `question.ilike.%${filters.search}%,teacher_name.ilike.%${filters.search}%,course_name.ilike.%${filters.search}%`
@@ -140,6 +139,21 @@ export const getUserProfileData = cache(async (username: string) => {
   return { profile, activity: activity ?? [] };
 });
 
+export const searchPublicProfiles = cache(async (query: string) => {
+  const supabase = createAdminClient();
+  const normalized = query.trim();
+  if (!normalized) return [];
+
+  const { data, error } = await supabase
+    .from("public_profile_stats")
+    .select("id, username, total_profit, win_rate, total_trades")
+    .ilike("username", `%${normalized}%`)
+    .limit(20);
+
+  if (isSchemaCacheMissingError(error)) return [];
+  return data ?? [];
+});
+
 export const getPortfolioData = cache(async (userId: string) => {
   const supabase = createAdminClient();
   const [
@@ -203,6 +217,7 @@ export const getAdminDashboardData = cache(async () => {
     { data: stats, error: statsError },
     { data: users, error: usersError },
     { data: marketList, error: marketListError },
+    { data: marketReports, error: marketReportsError },
     { data: auditLog, error: auditError },
     { data: balanceTransactions, error: balanceTxError }
   ] = await Promise.all([
@@ -214,7 +229,6 @@ export const getAdminDashboardData = cache(async () => {
     supabase
       .from("deposit_request_cards")
       .select("*")
-      .order("created_at", { ascending: false })
       .limit(20),
     supabase.from("platform_stats").select("*").maybeSingle(),
     supabase
@@ -225,9 +239,14 @@ export const getAdminDashboardData = cache(async () => {
     supabase
       .from("market_cards")
       .select("*")
-      .neq("status", "deleted")
+      .in("status", ["approved", "resolved", "rejected"])
       .order("created_at", { ascending: false })
       .limit(40),
+    supabase
+      .from("market_report_cards")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(30),
     supabase
       .from("admin_audit_log")
       .select("*")
@@ -246,6 +265,7 @@ export const getAdminDashboardData = cache(async () => {
     isSchemaCacheMissingError(statsError) ||
     isSchemaCacheMissingError(usersError) ||
     isSchemaCacheMissingError(marketListError) ||
+    isSchemaCacheMissingError(marketReportsError) ||
     isSchemaCacheMissingError(auditError) ||
     isSchemaCacheMissingError(balanceTxError)
   ) {
@@ -255,6 +275,7 @@ export const getAdminDashboardData = cache(async () => {
       stats: null,
       users: [],
       marketList: [],
+      marketReports: [],
       auditLog: [],
       balanceTransactions: []
     };
@@ -270,12 +291,21 @@ export const getAdminDashboardData = cache(async () => {
     };
   });
 
+  const orderedDeposits = [...(deposits ?? [])].sort((left, right) => {
+    if (left.status === right.status) {
+      return new Date(String(right.created_at)).getTime() - new Date(String(left.created_at)).getTime();
+    }
+
+    return left.status === "pending" ? -1 : 1;
+  });
+
   return {
     pending: pending ?? [],
-    deposits: deposits ?? [],
+    deposits: orderedDeposits,
     stats,
     users: usersWithEmail,
     marketList: marketList ?? [],
+    marketReports: marketReports ?? [],
     auditLog: auditLog ?? [],
     balanceTransactions: balanceTransactions ?? []
   };

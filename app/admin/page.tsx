@@ -3,6 +3,7 @@ import {
   AuditLogPanel,
   BalanceAdjustmentPanel,
   DepositRequestsPanel,
+  MarketReportsPanel,
   MarketsAdminPanel,
   OverviewPanel,
   UsersAdminPanel
@@ -22,7 +23,14 @@ export default async function AdminPage({
   const tab = params.tab ?? "overview";
   const error = params.error;
   const status = params.status;
+  const userQuery = params.q?.trim().toLowerCase() ?? "";
   const pendingRequestCount = data.deposits.filter((row) => row.status === "pending").length;
+  const filteredUsers = userQuery
+    ? data.users.filter((user) =>
+        String(user.username ?? "").toLowerCase().includes(userQuery) ||
+        String(user.email ?? "").toLowerCase().includes(userQuery)
+      )
+    : data.users;
 
   return (
     <div className="space-y-8">
@@ -47,7 +55,8 @@ export default async function AdminPage({
       ) : null}
       {tab === "requests" ? <DepositRequestsPanel requests={data.deposits} /> : null}
       {tab === "markets" ? <MarketsAdminPanel pending={data.pending} markets={data.marketList} /> : null}
-      {tab === "users" ? <UsersAdminPanel users={data.users} /> : null}
+      {tab === "reports" ? <MarketReportsPanel reports={data.marketReports} /> : null}
+      {tab === "users" ? <UsersAdminPanel users={filteredUsers} search={params.q} /> : null}
       {tab === "adjustments" ? <BalanceAdjustmentPanel users={data.users} /> : null}
       {tab === "audit" ? (
         <AuditLogPanel auditLog={data.auditLog} balanceTransactions={data.balanceTransactions} />

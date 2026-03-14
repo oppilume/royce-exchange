@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Clock3, GraduationCap, Tag } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { formatDatePst, formatDateTimePst, formatGems, formatMarketPhase, yesNoPrice } from "@/lib/utils";
+import { formatDatePst, formatDateTimePst, formatGems, formatMarketPhase, formatPriceGems, yesNoPrice } from "@/lib/utils";
 import type { MarketRow } from "@/lib/types";
 
 export function MarketCard({ market }: { market: MarketRow & { phase?: string } }) {
@@ -20,6 +20,11 @@ export function MarketCard({ market }: { market: MarketRow & { phase?: string } 
             <Badge tone="gold">{phase}</Badge>
             <Badge>{market.market_type === "exact_phrase" ? "Exact phrase" : "Broader mention"}</Badge>
             {market.category_name ? <Badge tone="sky">{market.category_name}</Badge> : null}
+            {market.resolved_outcome ? (
+              <Badge tone={market.resolved_outcome === "yes" ? "mint" : "danger"}>
+                Result: {String(market.resolved_outcome).toUpperCase()}
+              </Badge>
+            ) : null}
           </div>
           <h3 className="max-w-xl text-lg font-semibold leading-tight text-cream">{market.question}</h3>
         </div>
@@ -39,11 +44,11 @@ export function MarketCard({ market }: { market: MarketRow & { phase?: string } 
       <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
         <div className="rounded-2xl border border-mint/20 bg-mint/10 px-4 py-3">
           <p className="text-xs uppercase tracking-[0.18em] text-mint/70">Yes</p>
-          <p className="text-2xl font-semibold text-mint">{prices.yes}c</p>
+          <p className="text-2xl font-semibold text-mint">{formatPriceGems(prices.yes)}</p>
         </div>
         <div className="rounded-2xl border border-danger/20 bg-danger/10 px-4 py-3">
           <p className="text-xs uppercase tracking-[0.18em] text-danger/70">No</p>
-          <p className="text-2xl font-semibold text-danger">{prices.no}c</p>
+          <p className="text-2xl font-semibold text-danger">{formatPriceGems(prices.no)}</p>
         </div>
         <div className="flex items-center gap-2 rounded-2xl border border-white/10 px-4 py-3 text-sm text-cream/70">
           <Clock3 className="h-4 w-4" />

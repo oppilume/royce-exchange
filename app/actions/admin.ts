@@ -261,3 +261,92 @@ export async function updateUserRoleAction(formData: FormData): Promise<void> {
   revalidatePath("/admin");
   adminRedirect("users", `Role updated to ${role}.`);
 }
+
+export async function reviewMarketReportAction(formData: FormData): Promise<void> {
+  const { user: adminUser } = await requireAdmin();
+  const supabase = await createServerSupabaseClient();
+  const admin = createAdminClient();
+  const reportId = String(formData.get("report_id") || "");
+  const decision = String(formData.get("decision") || "");
+  const adminNote = String(formData.get("admin_note") || "");
+
+  if (!reportId || !["approved", "rejected"].includes(decision)) {
+    adminRedirect("reports", "Choose a valid report review action.", "error");
+  }
+
+  const { error } = await supabase.rpc("review_market_report", {
+    p_report_id: reportId,
+    p_decision: decision,
+    p_admin_note: adminNote
+  });
+
+  if (error) {
+    adminRedirect("reports", error.message, "error");
+  }
+
+  await admin.from("admin_audit_log").insert({
+    admin_user_id: adminUser.id,
+    action_type: decision === "approved" ? "market_report_approved" : "market_report_rejected",
+    target_type: "market_report",
+    target_id: reportId,
+    metadata: { admin_note: adminNote || null }
+  });
+
+  revalidatePath("/admin");
+  adminRedirect("reports", `Report ${decision}.`);
+}
+
+export async function deleteAccountAction(formData: FormData): Promise<void> {
+  const { user: adminUser } = await requireAdmin();
+  const admin = createAdminClient();
+  const userId = String(formData.get("user_id") || "");
+
+  if (!userId) {
+    adminRedirect("users", "Choose an account to delete.", "error");
+  }
+
+  const { data: targetProfile, error: targetError } = await admin
+    .from("profiles")
+    .select("id, role, username")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (!targetProfile || targetError) {
+    adminRedirect("users", targetError?.message ?? "That account could not be found.", "error");
+  }
+
+  const existingProfile = targetProfile!;
+
+  if (userId === adminUser.id) {
+    adminRedirect("users", "Use the close-account flow for your own account.", "error");
+  }
+
+  if (existingProfile.role === "admin") {
+    const { count } = await admin
+      .from("profiles")
+      .select("id", { count: "exact", head: true })
+      .eq("role", "admin");
+
+    if ((count ?? 0) <= 1) {
+      adminRedirect("users", "You cannot delete the last admin account.", "error");
+    }
+  }
+
+  const { error: deleteError } = await admin.auth.admin.deleteUser(userId);
+  if (deleteError) {
+    adminRedirect("users", deleteError.message, "error");
+  }
+
+  await admin.from("admin_audit_log").insert({
+    admin_user_id: adminUser.id,
+    action_type: "account_deleted",
+    target_type: "profile",
+    target_id: userId,
+    metadata: { username: existingProfile.username ?? null }
+  });
+
+  revalidatePath("/admin");
+  revalidatePath("/leaderboard");
+  revalidatePath("/markets");
+  adminRedirect("users", "Account deleted.");
+}

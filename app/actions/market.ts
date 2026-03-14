@@ -35,7 +35,7 @@ export async function submitMarketProposalAction(formData: FormData): Promise<vo
     p_notes: String(formData.get("notes") || ""),
     p_trading_close_at: tradingCloseAt,
     p_vote_start_at: voteStartAt,
-    p_category_name: String(formData.get("category_name") || ""),
+    p_category_name: "",
     p_creator_id: user.id
   };
 
@@ -62,7 +62,11 @@ export async function placeTradeAction(formData: FormData): Promise<void> {
   });
 
   if (error) {
-    redirect(`/markets/${marketId}?error=${encodeURIComponent(error.message)}`);
+    const friendlyMessage =
+      error.message.includes("Insufficient Gems")
+        ? "You do not have enough Jayhawk Gems for this purchase."
+        : error.message;
+    redirect(`/markets/${marketId}?error=${encodeURIComponent(friendlyMessage)}`);
   }
 
   revalidatePath(`/markets/${marketId}`);
@@ -78,18 +82,47 @@ export async function placeTradeAction(formData: FormData): Promise<void> {
 export async function submitVoteAction(formData: FormData): Promise<void> {
   await requireUser();
   const supabase = await createServerSupabaseClient();
+  const marketId = String(formData.get("market_id") || "");
 
   const { error } = await supabase.rpc("submit_market_vote", {
-    p_market_id: String(formData.get("market_id") || ""),
+    p_market_id: marketId,
     p_vote: String(formData.get("vote") || ""),
     p_comment: String(formData.get("comment") || "")
   });
 
   if (error) {
-    throw new Error(error.message);
+    redirect(`/markets/${marketId}?error=${encodeURIComponent(error.message)}`);
   }
 
-  revalidatePath(`/markets/${String(formData.get("market_id"))}`);
+  revalidatePath(`/markets/${marketId}`);
+  redirect(`/markets/${marketId}?status=${encodeURIComponent("Vote submitted.")}`);
+}
+
+export async function submitMarketReportAction(formData: FormData): Promise<void> {
+  const { user } = await requireUser();
+  const admin = createAdminClient();
+  const marketId = String(formData.get("market_id") || "");
+  const reason = String(formData.get("reason") || "").trim();
+
+  if (!marketId || reason.length < 8) {
+    redirect(`/markets/${marketId}?error=${encodeURIComponent("Please add a short reason for your report.")}`);
+  }
+
+  const { error } = await admin.from("market_reports").insert({
+    market_id: marketId,
+    user_id: user.id,
+    reason,
+    status: "pending"
+  });
+
+  if (error) {
+    const message = isSchemaCacheMissingError(error) ? SCHEMA_NOT_READY_MESSAGE : error.message;
+    redirect(`/markets/${marketId}?error=${encodeURIComponent(message)}`);
+  }
+
+  revalidatePath("/admin");
+  revalidatePath(`/markets/${marketId}`);
+  redirect(`/markets/${marketId}?status=${encodeURIComponent("Report sent to admins for review.")}`);
 }
 
 export async function submitDepositRequestAction(formData: FormData): Promise<void> {

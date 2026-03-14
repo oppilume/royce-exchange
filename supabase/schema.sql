@@ -39,6 +39,7 @@ create table if not exists public.markets (
   notes text,
   trading_close_at timestamptz not null,
   vote_start_at timestamptz not null,
+  vote_end_at timestamptz,
   question text not null,
   status public.market_status not null default 'pending',
   yes_price integer not null default 50 check (yes_price between 5 and 95),
@@ -161,6 +162,20 @@ create table if not exists public.deposit_requests (
 
 alter table if exists public.deposit_requests add column if not exists admin_note text;
 alter table if exists public.deposit_requests add column if not exists updated_at timestamptz not null default timezone('utc', now());
+alter table if exists public.markets add column if not exists vote_end_at timestamptz;
+
+create table if not exists public.market_reports (
+  id uuid primary key default gen_random_uuid(),
+  market_id uuid not null references public.markets(id) on delete cascade,
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  reason text not null,
+  status public.deposit_status not null default 'pending',
+  reviewed_by uuid references public.profiles(id) on delete set null,
+  reviewed_at timestamptz,
+  admin_note text,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now())
+);
 
 create table if not exists public.balance_transactions (
   id uuid primary key default gen_random_uuid(),
@@ -210,6 +225,11 @@ create trigger touch_markets_updated_at
 before update on public.markets
 for each row execute procedure public.touch_updated_at();
 
+drop trigger if exists touch_market_reports_updated_at on public.market_reports;
+create trigger touch_market_reports_updated_at
+before update on public.market_reports
+for each row execute procedure public.touch_updated_at();
+
 drop trigger if exists touch_market_orders_updated_at on public.market_orders;
 create trigger touch_market_orders_updated_at
 before update on public.market_orders
@@ -237,7 +257,8 @@ as $$
     when m.status = 'resolved' or m.resolved_outcome is not null then 'Resolved'
     when now() < m.trading_close_at then 'Live'
     when now() >= m.trading_close_at and now() < m.vote_start_at then 'Closed'
-    else 'Voting'
+    when now() >= m.vote_start_at and now() < coalesce(m.vote_end_at, m.vote_start_at + interval '1 day') then 'Voting'
+    else 'Awaiting resolution'
   end;
 $$;
 
@@ -378,6 +399,15 @@ select
 from public.deposit_requests dr
 join public.profiles pr on pr.id = dr.user_id;
 
+create or replace view public.market_report_cards as
+select
+  mr.*,
+  p.username,
+  m.question
+from public.market_reports mr
+join public.profiles p on p.id = mr.user_id
+join public.markets m on m.id = mr.market_id;
+
 alter table public.profiles enable row level security;
 alter table public.markets enable row level security;
 alter table public.trades enable row level security;
@@ -389,6 +419,7 @@ alter table public.market_resolutions enable row level security;
 alter table public.transactions enable row level security;
 alter table public.balance_adjustments enable row level security;
 alter table public.deposit_requests enable row level security;
+alter table public.market_reports enable row level security;
 alter table public.balance_transactions enable row level security;
 alter table public.admin_audit_log enable row level security;
 alter table public.categories enable row level security;
@@ -421,6 +452,9 @@ create policy "users can read own transactions" on public.transactions
 for select using (user_id = auth.uid() or public.is_admin(auth.uid()));
 
 create policy "users can read own deposit requests" on public.deposit_requests
+for select using (user_id = auth.uid() or public.is_admin(auth.uid()));
+
+create policy "users can read own market reports" on public.market_reports
 for select using (user_id = auth.uid() or public.is_admin(auth.uid()));
 
 create policy "admins read balance adjustments" on public.balance_adjustments
@@ -466,10 +500,12 @@ begin
     raise exception 'Vote start must be after trading close.';
   end if;
 
-  insert into public.categories (name, slug)
-  values (p_category_name, lower(regexp_replace(p_category_name, '[^a-zA-Z0-9]+', '-', 'g')))
-  on conflict (name) do update set name = excluded.name
-  returning id into category_id;
+  if nullif(trim(coalesce(p_category_name, '')), '') is not null then
+    insert into public.categories (name, slug)
+    values (p_category_name, lower(regexp_replace(p_category_name, '[^a-zA-Z0-9]+', '-', 'g')))
+    on conflict (name) do update set name = excluded.name
+    returning id into category_id;
+  end if;
 
   insert into public.markets (
     creator_id,
@@ -482,6 +518,7 @@ begin
     notes,
     trading_close_at,
     vote_start_at,
+    vote_end_at,
     question
   )
   values (
@@ -495,19 +532,22 @@ begin
     nullif(p_notes, ''),
     p_trading_close_at,
     p_vote_start_at,
+    p_vote_start_at + interval '1 day',
     format(
-      'Will %s %s during %s period %s on %s?',
+      'Will %s say or mention "%s" during %s block %s on %s?',
       p_teacher_name,
-      case when p_market_type = 'exact_phrase' then format('say "%s"', p_prediction_text) else format('mention %s', p_prediction_text) end,
+      p_prediction_text,
       p_class_period,
       p_course_name,
-      to_char(p_market_date, 'FMDay')
+      to_char(p_market_date, 'FMDay, Mon FMDD')
     )
   )
   returning id into market_id;
 
-  insert into public.market_categories (market_id, category_id)
-  values (market_id, category_id);
+  if category_id is not null then
+    insert into public.market_categories (market_id, category_id)
+    values (market_id, category_id);
+  end if;
 
   return market_id;
 end;
@@ -649,6 +689,10 @@ begin
     raise exception 'Voting is not open.';
   end if;
 
+  if now() > coalesce(market_row.vote_end_at, market_row.vote_start_at + interval '1 day') then
+    raise exception 'Voting has closed for this market.';
+  end if;
+
   select exists(
     select 1 from public.positions
     where market_id = p_market_id and user_id = actor and (yes_shares > 0 or no_shares > 0)
@@ -662,6 +706,31 @@ begin
   values (p_market_id, actor, p_vote, nullif(p_comment, ''))
   on conflict (market_id, user_id)
   do update set vote = excluded.vote, comment = excluded.comment, created_at = now();
+end;
+$$;
+
+create or replace function public.review_market_report(
+  p_report_id uuid,
+  p_decision public.deposit_status,
+  p_admin_note text
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not public.is_admin(auth.uid()) then
+    raise exception 'Admins only.';
+  end if;
+
+  update public.market_reports
+  set
+    status = p_decision,
+    reviewed_by = auth.uid(),
+    reviewed_at = now(),
+    admin_note = nullif(p_admin_note, '')
+  where id = p_report_id and status = 'pending';
 end;
 $$;
 
@@ -946,10 +1015,11 @@ end;
 $$;
 
 grant usage on schema public to anon, authenticated, service_role;
-grant select on public.market_cards, public.market_positions, public.portfolio_positions, public.portfolio_open_orders, public.public_profile_stats, public.leaderboard_all_time, public.leaderboard_weekly, public.platform_stats, public.deposit_request_cards, public.balance_transactions, public.admin_audit_log to anon, authenticated;
+grant select on public.market_cards, public.market_positions, public.portfolio_positions, public.portfolio_open_orders, public.public_profile_stats, public.leaderboard_all_time, public.leaderboard_weekly, public.platform_stats, public.deposit_request_cards, public.market_report_cards, public.balance_transactions, public.admin_audit_log to anon, authenticated;
 grant execute on function public.submit_market_proposal(text, text, text, text, date, public.market_type, text, timestamptz, timestamptz, text, uuid) to authenticated;
 grant execute on function public.place_trade(uuid, public.market_side, integer) to authenticated;
 grant execute on function public.submit_market_vote(uuid, public.market_side, text) to authenticated;
+grant execute on function public.review_market_report(uuid, public.deposit_status, text) to authenticated;
 grant execute on function public.approve_market(uuid) to authenticated;
 grant execute on function public.reject_market(uuid, text) to authenticated;
 grant execute on function public.resolve_market(uuid, public.market_side, text) to authenticated;
