@@ -10,9 +10,15 @@ export function TradeForm({
   yesPrice: number;
 }) {
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
-      <TradeSideForm marketId={marketId} side="yes" price={yesPrice} />
-      <TradeSideForm marketId={marketId} side="no" price={100 - yesPrice} />
+    <div className="space-y-4">
+      <div className="rounded-3xl border border-white/10 bg-white/5 p-4 text-sm text-cream/70">
+        Buy YES or NO like a normal prediction market. If your pick is still waiting on the other side,
+        we will show it as waiting for match until it becomes active.
+      </div>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <TradeSideForm marketId={marketId} side="yes" price={yesPrice} />
+        <TradeSideForm marketId={marketId} side="no" price={100 - yesPrice} />
+      </div>
     </div>
   );
 }
@@ -36,11 +42,12 @@ function TradeSideForm({
       <input type="hidden" name="market_id" value={marketId} />
       <input type="hidden" name="side" value={side} />
       <div>
-        <p className="text-xs uppercase tracking-[0.18em] text-cream/45">
-          Buy {side.toUpperCase()}
-        </p>
+        <p className="text-xs uppercase tracking-[0.18em] text-cream/45">Buy {side.toUpperCase()}</p>
         <p className={`mt-1 text-3xl font-semibold ${side === "yes" ? "text-mint" : "text-danger"}`}>
           {price}c
+        </p>
+        <p className="mt-2 text-sm text-cream/60">
+          {price} Gems per share. If needed, your order may wait briefly for a match.
         </p>
       </div>
       <label className="block">
@@ -48,7 +55,7 @@ function TradeSideForm({
         <Input min={1} max={500} step={1} type="number" name="quantity" defaultValue={10} />
       </label>
       <Button fullWidth type="submit" variant={side === "yes" ? "primary" : "secondary"}>
-        Confirm {side.toUpperCase()}
+        Buy {side.toUpperCase()}
       </Button>
     </form>
   );

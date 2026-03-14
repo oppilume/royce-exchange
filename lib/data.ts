@@ -52,27 +52,45 @@ export const getMarket = cache(async (marketId: string) => {
     return {
       market: null,
       positions: [],
-      votes: []
+      votes: [],
+      openOrders: []
     };
   }
 
-  const [{ data: positions, error: positionsError }, { data: votes, error: votesError }] = await Promise.all([
+  const [
+    { data: positions, error: positionsError },
+    { data: votes, error: votesError },
+    { data: openOrders, error: ordersError }
+  ] = await Promise.all([
     supabase.from("market_positions").select("*").eq("market_id", marketId),
-    supabase.from("market_votes").select("vote, comment, created_at, profiles(username)").eq("market_id", marketId)
+    supabase.from("market_votes").select("vote, comment, created_at, profiles(username)").eq("market_id", marketId),
+    supabase
+      .from("market_orders")
+      .select("id, user_id, side, price, remaining_quantity, locked_gems, created_at")
+      .eq("market_id", marketId)
+      .eq("status", "open")
+      .gt("remaining_quantity", 0)
+      .order("created_at", { ascending: true })
   ]);
 
-  if (isSchemaCacheMissingError(positionsError) || isSchemaCacheMissingError(votesError)) {
+  if (
+    isSchemaCacheMissingError(positionsError) ||
+    isSchemaCacheMissingError(votesError) ||
+    isSchemaCacheMissingError(ordersError)
+  ) {
     return {
       market,
       positions: [],
-      votes: []
+      votes: [],
+      openOrders: []
     };
   }
 
   return {
     market,
     positions: positions ?? [],
-    votes: votes ?? []
+    votes: votes ?? [],
+    openOrders: openOrders ?? []
   };
 });
 
@@ -146,7 +164,8 @@ export const getPortfolioData = cache(async (userId: string) => {
     { data: positions, error: positionsError },
     { data: transactions, error: transactionsError },
     { data: stats, error: statsError },
-    { data: depositRequests, error: depositError }
+    { data: depositRequests, error: depositError },
+    { data: openOrders, error: openOrdersError }
   ] = await Promise.all([
     supabase
       .from("portfolio_positions")
@@ -165,20 +184,27 @@ export const getPortfolioData = cache(async (userId: string) => {
       .select("*")
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
-      .limit(10)
+      .limit(10),
+    supabase
+      .from("portfolio_open_orders")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
   ]);
 
   if (
     isSchemaCacheMissingError(positionsError) ||
     isSchemaCacheMissingError(transactionsError) ||
     isSchemaCacheMissingError(statsError) ||
-    isSchemaCacheMissingError(depositError)
+    isSchemaCacheMissingError(depositError) ||
+    isSchemaCacheMissingError(openOrdersError)
   ) {
     return {
       positions: [],
       transactions: [],
       stats: null,
-      depositRequests: []
+      depositRequests: [],
+      openOrders: []
     };
   }
 
@@ -186,7 +212,8 @@ export const getPortfolioData = cache(async (userId: string) => {
     positions: positions ?? [],
     transactions: transactions ?? [],
     stats,
-    depositRequests: depositRequests ?? []
+    depositRequests: depositRequests ?? [],
+    openOrders: openOrders ?? []
   };
 });
 

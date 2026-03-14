@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { ResolveMarketPanel } from "@/components/admin-panels";
+import { StatusBanner } from "@/components/status-banner";
 import { Badge } from "@/components/ui/badge";
 import { TradeForm } from "@/components/trade-form";
 import { VoteForm } from "@/components/vote-form";
@@ -9,12 +10,15 @@ import { getMarket } from "@/lib/data";
 import { formatDateTimePst, formatGems, formatMarketPhase, yesNoPrice } from "@/lib/utils";
 
 export default async function MarketDetailPage({
-  params
+  params,
+  searchParams
 }: {
   params: Promise<{ marketId: string }>;
+  searchParams: Promise<Record<string, string | undefined>>;
 }) {
   const { marketId } = await params;
-  const [{ market, positions, votes }, session] = await Promise.all([
+  const query = await searchParams;
+  const [{ market, positions, votes, openOrders }, session] = await Promise.all([
     getMarket(marketId),
     getSessionProfile()
   ]);
@@ -24,7 +28,14 @@ export default async function MarketDetailPage({
   const phase = formatMarketPhase(market);
   const price = yesNoPrice(market.yes_price);
   const myPosition = positions.find((entry) => entry.user_id === session.user?.id);
+  const myOpenOrders = openOrders.filter((entry) => entry.user_id === session.user?.id);
   const canVote = phase === "Voting" && myPosition;
+  const restingYes = openOrders
+    .filter((entry) => entry.side === "yes")
+    .reduce((sum, entry) => sum + Number(entry.remaining_quantity ?? 0), 0);
+  const restingNo = openOrders
+    .filter((entry) => entry.side === "no")
+    .reduce((sum, entry) => sum + Number(entry.remaining_quantity ?? 0), 0);
 
   return (
     <div className="space-y-8">
@@ -45,8 +56,18 @@ export default async function MarketDetailPage({
           <div className="mt-8 grid gap-3 md:grid-cols-3">
             <InfoCard label="YES price" value={`${price.yes}c`} accent="mint" />
             <InfoCard label="NO price" value={`${price.no}c`} accent="danger" />
-            <InfoCard label="Total volume" value={formatGems(market.total_volume)} accent="sky" />
+            <InfoCard label="Volume" value={formatGems(market.total_volume)} accent="sky" />
           </div>
+
+          <details className="mt-6 max-w-3xl rounded-3xl border border-white/10 bg-white/5 p-5 text-sm text-cream/70">
+            <summary className="cursor-pointer list-none font-medium text-cream">
+              How this works
+            </summary>
+            <p className="mt-3 leading-6">
+              Buy YES or NO like a normal prediction market. If there is not an instant match, your pick
+              waits for a match and your Gems are reserved until it becomes active or gets refunded later.
+            </p>
+          </details>
 
           <div className="mt-8 grid gap-4 rounded-3xl border border-white/10 bg-white/5 p-5 text-sm text-cream/70 md:grid-cols-3">
             <div>
@@ -69,6 +90,7 @@ export default async function MarketDetailPage({
         </div>
 
         <div className="space-y-5">
+          <StatusBanner error={query.error} status={query.status} />
           {phase === "Live" ? (
             <TradeForm marketId={market.id} yesPrice={market.yes_price} />
           ) : (
@@ -92,6 +114,28 @@ export default async function MarketDetailPage({
             ) : (
               <p className="mt-2 text-sm text-cream/65">You have not traded this market yet.</p>
             )}
+            {myOpenOrders.length ? (
+              <div className="mt-4 border-t border-white/10 pt-4 text-sm text-cream/72">
+                <p className="font-medium text-cream">Waiting for match</p>
+                <div className="mt-2 space-y-2">
+                  {myOpenOrders.map((order) => (
+                    <p key={order.id}>
+                      {String(order.side).toUpperCase()} {order.remaining_quantity} at {order.price}c · Reserved{" "}
+                      {formatGems(order.locked_gems)}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="glass-panel p-6">
+            <p className="text-lg font-semibold">Market status</p>
+            <div className="mt-4 space-y-2 text-sm text-cream/75">
+              <p>Waiting YES picks: {restingYes}</p>
+              <p>Waiting NO picks: {restingNo}</p>
+              <p className="text-cream/55">Matched picks become active positions automatically.</p>
+            </div>
           </div>
         </div>
       </section>

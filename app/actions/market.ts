@@ -53,21 +53,26 @@ export async function submitMarketProposalAction(formData: FormData): Promise<vo
 export async function placeTradeAction(formData: FormData): Promise<void> {
   await requireUser();
   const supabase = await createServerSupabaseClient();
+  const marketId = String(formData.get("market_id") || "");
 
   const { error } = await supabase.rpc("place_trade", {
-    p_market_id: String(formData.get("market_id") || ""),
+    p_market_id: marketId,
     p_side: String(formData.get("side") || ""),
     p_quantity: Number(formData.get("quantity") || 0)
   });
 
   if (error) {
-    throw new Error(error.message);
+    redirect(`/markets/${marketId}?error=${encodeURIComponent(error.message)}`);
   }
 
-  const marketId = String(formData.get("market_id"));
   revalidatePath(`/markets/${marketId}`);
   revalidatePath("/portfolio");
   revalidatePath("/markets");
+  redirect(
+    `/markets/${marketId}?status=${encodeURIComponent(
+      "Order placed. If it does not match right away, it will show as waiting for match until it becomes active or is refunded."
+    )}`
+  );
 }
 
 export async function submitVoteAction(formData: FormData): Promise<void> {
