@@ -86,7 +86,7 @@ declare
   contract_price integer;
   opposite_price integer;
   cost bigint;
-  remaining_quantity integer;
+  incoming_remaining_quantity integer;
   open_order_id uuid;
   opposite_order record;
   matched_quantity integer;
@@ -112,7 +112,7 @@ begin
   contract_price := case when p_side = 'yes' then market_row.yes_price else 100 - market_row.yes_price end;
   opposite_price := 100 - contract_price;
   cost := contract_price * p_quantity;
-  remaining_quantity := p_quantity;
+  incoming_remaining_quantity := p_quantity;
 
   update public.profiles
   set gem_balance = gem_balance - cost
@@ -147,18 +147,18 @@ begin
 
   for opposite_order in
     select *
-    from public.market_orders
-    where market_id = p_market_id
-      and side <> p_side
-      and status = 'open'
-      and remaining_quantity > 0
-      and price = opposite_price
-    order by created_at asc
+    from public.market_orders mo
+    where mo.market_id = p_market_id
+      and mo.side <> p_side
+      and mo.status = 'open'
+      and mo.remaining_quantity > 0
+      and mo.price = opposite_price
+    order by mo.created_at asc
     for update skip locked
   loop
-    exit when remaining_quantity <= 0;
+    exit when incoming_remaining_quantity <= 0;
 
-    matched_quantity := least(remaining_quantity, opposite_order.remaining_quantity);
+    matched_quantity := least(incoming_remaining_quantity, opposite_order.remaining_quantity);
     matched_yes_price := case when p_side = 'yes' then contract_price else opposite_order.price end;
 
     insert into public.market_matches (
@@ -239,7 +239,7 @@ begin
       no_cost_basis = public.positions.no_cost_basis + excluded.no_cost_basis,
       latest_trade_at = now();
 
-    remaining_quantity := remaining_quantity - matched_quantity;
+    incoming_remaining_quantity := incoming_remaining_quantity - matched_quantity;
     total_matched := total_matched + matched_quantity;
 
     update public.market_orders
@@ -255,10 +255,10 @@ begin
 
   update public.market_orders
   set
-    remaining_quantity = remaining_quantity,
-    locked_gems = contract_price * remaining_quantity,
+    remaining_quantity = incoming_remaining_quantity,
+    locked_gems = contract_price * incoming_remaining_quantity,
     status = case
-      when remaining_quantity = 0 then 'filled'
+      when incoming_remaining_quantity = 0 then 'filled'
       else 'open'
     end
   where id = open_order_id;
