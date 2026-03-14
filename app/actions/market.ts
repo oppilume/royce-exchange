@@ -70,7 +70,7 @@ export async function placeTradeAction(formData: FormData): Promise<void> {
   revalidatePath("/markets");
   redirect(
     `/markets/${marketId}?status=${encodeURIComponent(
-      "Order placed. If it does not match right away, it will show as waiting for match until it becomes active or is refunded."
+      "Position added successfully."
     )}`
   );
 }

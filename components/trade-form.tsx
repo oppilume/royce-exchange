@@ -12,8 +12,8 @@ export function TradeForm({
   return (
     <div className="space-y-4">
       <div className="rounded-3xl border border-white/10 bg-white/5 p-4 text-sm text-cream/70">
-        Buy YES or NO like a normal prediction market. If your pick is still waiting on the other side,
-        we will show it as waiting for match until it becomes active.
+        Buy YES or NO like a normal prediction market. Your stake goes into the market pool, and the
+        winning side shares the losing side's pool when the market resolves.
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
         <TradeSideForm marketId={marketId} side="yes" price={yesPrice} />
@@ -47,7 +47,7 @@ function TradeSideForm({
           {price}c
         </p>
         <p className="mt-2 text-sm text-cream/60">
-          {price} Gems per share. If needed, your order may wait briefly for a match.
+          {price} Gems per share at the current market price.
         </p>
       </div>
       <label className="block">

@@ -29,13 +29,7 @@ export default async function PortfolioPage({
               value={formatGems(profile?.gem_balance ?? 0)}
               hint={formatUsdHint(profile?.gem_balance ?? 0)}
             />
-            <Metric
-              label="Pending orders"
-              value={formatGems(
-                portfolio.openOrders.reduce((sum, order) => sum + Number(order.locked_gems ?? 0), 0)
-              )}
-              hint={`${portfolio.openOrders.length} waiting for match`}
-            />
+            <Metric label="Active positions" value={String(portfolio.positions.length)} hint="Markets you currently hold" />
             <Metric label="Profit" value={formatGems(portfolio.stats?.total_profit ?? 0)} hint="All time" />
             <Metric label="ROI" value={formatPct(portfolio.stats?.roi_percent ?? 0)} hint="Across resolved markets" />
             <Metric label="Win rate" value={formatPct(portfolio.stats?.win_rate ?? 0)} hint="Resolved picks" />
@@ -54,53 +48,25 @@ export default async function PortfolioPage({
         </form>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[1fr_1fr]">
-        <div className="glass-panel overflow-hidden">
-          <div className="border-b border-white/10 px-6 py-5">
-            <h2 className="text-2xl font-semibold">Active positions</h2>
-          </div>
-          <div className="divide-y divide-white/6">
-            {portfolio.positions.length ? (
-              portfolio.positions.map((position) => (
-                <div key={position.id} className="px-6 py-5">
-                  <p className="font-semibold">{position.question}</p>
-                  <p className="mt-2 text-sm text-cream/60">
-                    YES {position.yes_shares} / NO {position.no_shares} · Cost basis{" "}
-                    {formatGems(position.total_cost_basis)}
-                  </p>
-                  <p className="mt-1 text-sm text-cream/60">Latest trade {formatDateTimePst(position.latest_trade_at)}</p>
-                </div>
-              ))
-            ) : (
-              <div className="px-6 py-10 text-sm text-cream/65">No positions yet.</div>
-            )}
-          </div>
+      <section className="glass-panel overflow-hidden">
+        <div className="border-b border-white/10 px-6 py-5">
+          <h2 className="text-2xl font-semibold">Active positions</h2>
         </div>
-
-        <div className="glass-panel overflow-hidden">
-          <div className="border-b border-white/10 px-6 py-5">
-            <h2 className="text-2xl font-semibold">Pending orders</h2>
-            <p className="mt-2 text-sm text-cream/60">
-              These picks are waiting for a match. The shown Gems are reserved until they become active or get refunded.
-            </p>
-          </div>
-          <div className="divide-y divide-white/6">
-            {portfolio.openOrders.length ? (
-              portfolio.openOrders.map((order) => (
-                <div key={order.id} className="px-6 py-5">
-                  <p className="font-semibold">{order.question}</p>
-                  <p className="mt-2 text-sm text-cream/60">
-                    {String(order.side).toUpperCase()} {order.remaining_quantity} at {order.price}c · Waiting for match
-                  </p>
-                  <p className="mt-1 text-sm text-cream/60">
-                    Reserved {formatGems(order.locked_gems)} · Submitted {formatDateTimePst(order.created_at)}
-                  </p>
-                </div>
-              ))
-            ) : (
-              <div className="px-6 py-10 text-sm text-cream/65">No pending orders right now.</div>
-            )}
-          </div>
+        <div className="divide-y divide-white/6">
+          {portfolio.positions.length ? (
+            portfolio.positions.map((position) => (
+              <div key={position.id} className="px-6 py-5">
+                <p className="font-semibold">{position.question}</p>
+                <p className="mt-2 text-sm text-cream/60">
+                  YES {position.yes_shares} / NO {position.no_shares} · Staked{" "}
+                  {formatGems(position.total_cost_basis)}
+                </p>
+                <p className="mt-1 text-sm text-cream/60">Latest trade {formatDateTimePst(position.latest_trade_at)}</p>
+              </div>
+            ))
+          ) : (
+            <div className="px-6 py-10 text-sm text-cream/65">No positions yet.</div>
+          )}
         </div>
       </section>
 

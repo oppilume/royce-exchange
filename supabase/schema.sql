@@ -527,14 +527,9 @@ declare
   actor uuid := auth.uid();
   market_row public.markets%rowtype;
   contract_price integer;
-  opposite_price integer;
   cost bigint;
-  incoming_remaining_quantity integer;
-  open_order_id uuid;
-  opposite_order record;
-  matched_quantity integer;
-  matched_yes_price integer;
-  total_matched integer := 0;
+  total_yes_stake bigint;
+  total_no_stake bigint;
 begin
   if actor is null then
     raise exception 'Log in to trade.';
@@ -553,9 +548,7 @@ begin
   end if;
 
   contract_price := case when p_side = 'yes' then market_row.yes_price else 100 - market_row.yes_price end;
-  opposite_price := 100 - contract_price;
   cost := contract_price * p_quantity;
-  incoming_remaining_quantity := p_quantity;
 
   update public.profiles
   set gem_balance = gem_balance - cost
@@ -565,154 +558,67 @@ begin
     raise exception 'Insufficient Gems.';
   end if;
 
-  insert into public.transactions (user_id, market_id, type, amount_gems, description)
-  values (actor, p_market_id, 'trade', -cost, format('Locked %s order x%s', upper(p_side::text), p_quantity));
-
-  insert into public.market_orders (
+  insert into public.trades (
     market_id,
     user_id,
     side,
-    price,
     quantity,
-    remaining_quantity,
-    locked_gems
+    price,
+    cost_gems
   )
   values (
     p_market_id,
     actor,
     p_side,
+    p_quantity,
     contract_price,
-    p_quantity,
-    p_quantity,
     cost
+  );
+
+  insert into public.transactions (user_id, market_id, type, amount_gems, description)
+  values (actor, p_market_id, 'trade', -cost, format('Bought %s x%s', upper(p_side::text), p_quantity));
+
+  insert into public.positions (
+    market_id,
+    user_id,
+    yes_shares,
+    no_shares,
+    yes_cost_basis,
+    no_cost_basis,
+    latest_trade_at
   )
-  returning id into open_order_id;
-
-  for opposite_order in
-    select *
-    from public.market_orders mo
-    where mo.market_id = p_market_id
-      and mo.side <> p_side
-      and mo.status = 'open'
-      and mo.remaining_quantity > 0
-      and mo.price = opposite_price
-    order by mo.created_at asc
-    for update skip locked
-  loop
-    exit when incoming_remaining_quantity <= 0;
-
-    matched_quantity := least(incoming_remaining_quantity, opposite_order.remaining_quantity);
-    matched_yes_price := case when p_side = 'yes' then contract_price else opposite_order.price end;
-
-    insert into public.market_matches (
-      market_id,
-      yes_order_id,
-      no_order_id,
-      yes_user_id,
-      no_user_id,
-      quantity,
-      yes_price,
-      no_price,
-      total_collateral
-    )
-    values (
-      p_market_id,
-      case when p_side = 'yes' then open_order_id else opposite_order.id end,
-      case when p_side = 'no' then open_order_id else opposite_order.id end,
-      case when p_side = 'yes' then actor else opposite_order.user_id end,
-      case when p_side = 'no' then actor else opposite_order.user_id end,
-      matched_quantity,
-      matched_yes_price,
-      100 - matched_yes_price,
-      matched_quantity * 100
-    );
-
-    insert into public.trades (market_id, user_id, side, quantity, price, cost_gems)
-    values
-      (
-        p_market_id,
-        case when p_side = 'yes' then actor else opposite_order.user_id end,
-        'yes',
-        matched_quantity,
-        matched_yes_price,
-        matched_yes_price * matched_quantity
-      ),
-      (
-        p_market_id,
-        case when p_side = 'no' then actor else opposite_order.user_id end,
-        'no',
-        matched_quantity,
-        100 - matched_yes_price,
-        (100 - matched_yes_price) * matched_quantity
-      );
-
-    insert into public.positions (
-      market_id,
-      user_id,
-      yes_shares,
-      no_shares,
-      yes_cost_basis,
-      no_cost_basis,
-      latest_trade_at
-    )
-    values
-      (
-        p_market_id,
-        case when p_side = 'yes' then actor else opposite_order.user_id end,
-        matched_quantity,
-        0,
-        matched_yes_price * matched_quantity,
-        0,
-        now()
-      ),
-      (
-        p_market_id,
-        case when p_side = 'no' then actor else opposite_order.user_id end,
-        0,
-        matched_quantity,
-        0,
-        (100 - matched_yes_price) * matched_quantity,
-        now()
-      )
-    on conflict (market_id, user_id) do update
-    set
-      yes_shares = public.positions.yes_shares + excluded.yes_shares,
-      no_shares = public.positions.no_shares + excluded.no_shares,
-      yes_cost_basis = public.positions.yes_cost_basis + excluded.yes_cost_basis,
-      no_cost_basis = public.positions.no_cost_basis + excluded.no_cost_basis,
-      latest_trade_at = now();
-
-    incoming_remaining_quantity := incoming_remaining_quantity - matched_quantity;
-    total_matched := total_matched + matched_quantity;
-
-    update public.market_orders
-    set
-      remaining_quantity = opposite_order.remaining_quantity - matched_quantity,
-      locked_gems = price * (opposite_order.remaining_quantity - matched_quantity),
-      status = case
-        when opposite_order.remaining_quantity - matched_quantity = 0 then 'filled'
-        else 'open'
-      end
-    where id = opposite_order.id;
-  end loop;
-
-  update public.market_orders
+  values (
+    p_market_id,
+    actor,
+    case when p_side = 'yes' then p_quantity else 0 end,
+    case when p_side = 'no' then p_quantity else 0 end,
+    case when p_side = 'yes' then cost else 0 end,
+    case when p_side = 'no' then cost else 0 end,
+    now()
+  )
+  on conflict (market_id, user_id) do update
   set
-    remaining_quantity = incoming_remaining_quantity,
-    locked_gems = contract_price * incoming_remaining_quantity,
-    status = case
-      when incoming_remaining_quantity = 0 then 'filled'
-      else 'open'
-    end
-  where id = open_order_id;
+    yes_shares = public.positions.yes_shares + excluded.yes_shares,
+    no_shares = public.positions.no_shares + excluded.no_shares,
+    yes_cost_basis = public.positions.yes_cost_basis + excluded.yes_cost_basis,
+    no_cost_basis = public.positions.no_cost_basis + excluded.no_cost_basis,
+    latest_trade_at = now();
 
-  if total_matched > 0 then
-    update public.markets
-    set
-      total_volume = total_volume + (total_matched * 100),
-      yes_price = matched_yes_price
-    where id = p_market_id;
-  end if;
+  select
+    coalesce(sum(yes_cost_basis), 0),
+    coalesce(sum(no_cost_basis), 0)
+  into total_yes_stake, total_no_stake
+  from public.positions
+  where market_id = p_market_id;
+
+  update public.markets
+  set
+    total_volume = total_yes_stake + total_no_stake,
+    yes_price = case
+      when total_yes_stake + total_no_stake = 0 then 50
+      else greatest(5, least(95, round((total_yes_stake::numeric / (total_yes_stake + total_no_stake)::numeric) * 100)::integer))
+    end
+  where id = p_market_id;
 end;
 $$;
 
@@ -808,7 +714,16 @@ declare
   market_row public.markets%rowtype;
   position_row record;
   order_row record;
+  winner_row record;
+  total_yes_stake bigint;
+  total_no_stake bigint;
+  winner_pool bigint;
+  loser_pool bigint;
+  distributed_loser bigint := 0;
+  extra_remainder bigint := 0;
+  lead_winner_id uuid;
   payout bigint;
+  loser_share bigint;
 begin
   if not public.is_admin(actor) then
     raise exception 'Admins only.';
@@ -840,20 +755,60 @@ begin
   on conflict (market_id) do update
   set outcome = excluded.outcome, resolved_by = excluded.resolved_by, admin_note = excluded.admin_note, created_at = now();
 
-  for position_row in
-    select * from public.positions where market_id = p_market_id
-  loop
-    payout := case
-      when p_outcome = 'yes' then position_row.yes_shares * 100
-      else position_row.no_shares * 100
-    end;
+  select
+    coalesce(sum(yes_cost_basis), 0),
+    coalesce(sum(no_cost_basis), 0)
+  into total_yes_stake, total_no_stake
+  from public.positions
+  where market_id = p_market_id;
 
-    if payout > 0 then
-      update public.profiles set gem_balance = gem_balance + payout where id = position_row.user_id;
+  if total_yes_stake = 0 or total_no_stake = 0 then
+    for position_row in
+      select * from public.positions where market_id = p_market_id and total_cost_basis > 0
+    loop
+      update public.profiles set gem_balance = gem_balance + position_row.total_cost_basis where id = position_row.user_id;
       insert into public.transactions (user_id, market_id, type, amount_gems, description)
-      values (position_row.user_id, p_market_id, 'payout', payout, format('Resolved %s', upper(p_outcome::text)));
+      values (position_row.user_id, p_market_id, 'refund', position_row.total_cost_basis, 'Single-sided market refund');
+    end loop;
+
+    return;
+  end if;
+
+  winner_pool := case when p_outcome = 'yes' then total_yes_stake else total_no_stake end;
+  loser_pool := case when p_outcome = 'yes' then total_no_stake else total_yes_stake end;
+
+  for winner_row in
+    select
+      user_id,
+      case when p_outcome = 'yes' then yes_cost_basis else no_cost_basis end as winning_stake
+    from public.positions
+    where market_id = p_market_id
+      and (case when p_outcome = 'yes' then yes_cost_basis else no_cost_basis end) > 0
+    order by
+      (case when p_outcome = 'yes' then yes_cost_basis else no_cost_basis end) desc,
+      user_id asc
+  loop
+    if lead_winner_id is null then
+      lead_winner_id := winner_row.user_id;
     end if;
+
+    loser_share := floor((winner_row.winning_stake::numeric / winner_pool::numeric) * loser_pool::numeric);
+    distributed_loser := distributed_loser + loser_share;
+    payout := winner_row.winning_stake + loser_share;
+
+    update public.profiles set gem_balance = gem_balance + payout where id = winner_row.user_id;
+    insert into public.transactions (user_id, market_id, type, amount_gems, description)
+    values (winner_row.user_id, p_market_id, 'payout', payout, format('Resolved %s', upper(p_outcome::text)));
   end loop;
+
+  extra_remainder := loser_pool - distributed_loser;
+
+  if extra_remainder > 0 and lead_winner_id is not null then
+    update public.profiles set gem_balance = gem_balance + extra_remainder where id = lead_winner_id;
+    insert into public.transactions (user_id, market_id, type, amount_gems, description)
+    values (lead_winner_id, p_market_id, 'payout', extra_remainder, 'Resolution rounding remainder');
+  end if;
+
 end;
 $$;
 

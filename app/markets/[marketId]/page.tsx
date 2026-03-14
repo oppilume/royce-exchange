@@ -18,7 +18,7 @@ export default async function MarketDetailPage({
 }) {
   const { marketId } = await params;
   const query = await searchParams;
-  const [{ market, positions, votes, openOrders }, session] = await Promise.all([
+  const [{ market, positions, votes }, session] = await Promise.all([
     getMarket(marketId),
     getSessionProfile()
   ]);
@@ -28,14 +28,7 @@ export default async function MarketDetailPage({
   const phase = formatMarketPhase(market);
   const price = yesNoPrice(market.yes_price);
   const myPosition = positions.find((entry) => entry.user_id === session.user?.id);
-  const myOpenOrders = openOrders.filter((entry) => entry.user_id === session.user?.id);
   const canVote = phase === "Voting" && myPosition;
-  const restingYes = openOrders
-    .filter((entry) => entry.side === "yes")
-    .reduce((sum, entry) => sum + Number(entry.remaining_quantity ?? 0), 0);
-  const restingNo = openOrders
-    .filter((entry) => entry.side === "no")
-    .reduce((sum, entry) => sum + Number(entry.remaining_quantity ?? 0), 0);
 
   return (
     <div className="space-y-8">
@@ -64,8 +57,8 @@ export default async function MarketDetailPage({
               How this works
             </summary>
             <p className="mt-3 leading-6">
-              Buy YES or NO like a normal prediction market. If there is not an instant match, your pick
-              waits for a match and your Gems are reserved until it becomes active or gets refunded later.
+              Every YES and NO buy adds Gems to that side of the pool. When the market resolves, the winning
+              side gets back its own stake plus a proportional share of the losing side's pool.
             </p>
           </details>
 
@@ -114,27 +107,14 @@ export default async function MarketDetailPage({
             ) : (
               <p className="mt-2 text-sm text-cream/65">You have not traded this market yet.</p>
             )}
-            {myOpenOrders.length ? (
-              <div className="mt-4 border-t border-white/10 pt-4 text-sm text-cream/72">
-                <p className="font-medium text-cream">Waiting for match</p>
-                <div className="mt-2 space-y-2">
-                  {myOpenOrders.map((order) => (
-                    <p key={order.id}>
-                      {String(order.side).toUpperCase()} {order.remaining_quantity} at {order.price}c · Reserved{" "}
-                      {formatGems(order.locked_gems)}
-                    </p>
-                  ))}
-                </div>
-              </div>
-            ) : null}
           </div>
 
           <div className="glass-panel p-6">
             <p className="text-lg font-semibold">Market status</p>
             <div className="mt-4 space-y-2 text-sm text-cream/75">
-              <p>Waiting YES picks: {restingYes}</p>
-              <p>Waiting NO picks: {restingNo}</p>
-              <p className="text-cream/55">Matched picks become active positions automatically.</p>
+              <p>{formatGems(positions.reduce((sum, position) => sum + Number(position.yes_cost_basis ?? 0), 0))} staked on YES</p>
+              <p>{formatGems(positions.reduce((sum, position) => sum + Number(position.no_cost_basis ?? 0), 0))} staked on NO</p>
+              <p className="text-cream/55">Price updates with the balance of the YES and NO pools.</p>
             </div>
           </div>
         </div>
